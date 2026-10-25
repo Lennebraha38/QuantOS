@@ -295,7 +295,7 @@ async function handleApiTts(req, res) {
       activeTtsChild = null;
     }
 
-    const termuxBin = findExecutableInPath('termux-tts-speak');
+    const termuxBin = process.env.TERMUX_API_ENABLED === '1' ? findExecutableInPath('termux-tts-speak') : null;
     if (termuxBin) {
       const child = spawn(termuxBin, ['-l', safeLang, '--', cleanText], {
         shell: false,

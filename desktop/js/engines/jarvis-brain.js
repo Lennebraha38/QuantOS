@@ -188,6 +188,51 @@ export class JarvisBrain {
       dialogHistory: []
     };
     this._phraseAudioCache = new Map();
+    this._silenceTimer = null;
+    this._cachedVoices = [];
+    this._activeUtterance = null;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        this._cachedVoices = window.speechSynthesis.getVoices() || [];
+        window.speechSynthesis.onvoiceschanged = () => {
+          this._cachedVoices = window.speechSynthesis.getVoices() || [];
+        };
+      } catch {}
+    }
+  }
+
+  _getVoices() {
+    if (this._cachedVoices && this._cachedVoices.length > 0) {
+      return this._cachedVoices;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length > 0) {
+          this._cachedVoices = v;
+          return v;
+        }
+      } catch {}
+    }
+    return [];
+  }
+
+  _sanitizeForSpeech(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/```[\s\S]*?```/g, ' kod bloğu ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/#+\s+/g, '')
+      .replace(/https?:\/\/\S+/g, ' web bağlantısı ')
+      .replace(/\/[\w\-.\/]+/g, (m) => (m.length > 20 ? ' dosya yolu ' : m))
+      .replace(/\|\s*([^|]+)\s*\|/g, '$1, ')
+      .replace(/\|/g, ' ')
+      .replace(/[-*]\s+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   getConfig() {
@@ -1425,26 +1470,32 @@ export class JarvisBrain {
     };
   }
 
-  async speak(text, { lang } = {}) {
-    const clean = String(text ?? '').trim();
+  async speak(text, { lang, force = false } = {}) {
+    const raw = String(text ?? '').trim();
+    if (!raw) return false;
+    if (this._config.voiceEnabled === false && !force) return false;
+
+    const clean = this._sanitizeForSpeech(raw);
     if (!clean) return false;
-    if (this._config.voiceEnabled === false) return false;
 
     const effectiveLang = lang || this._config.lang || 'tr-TR';
     const langPrefix = effectiveLang.slice(0, 2).toLowerCase();
 
     this.stopSpeaking();
-    this._setState('speaking', { lastReply: clean });
+    this._setState('speaking', { lastReply: raw, speakingText: clean });
 
-    // Önbelleklenmiş ses yanıtı kontrolü (Sıfır Gecikme)
+    // Fütüristik J.A.R.V.I.S. Akustik Ton & Ark Reaktörü Nabzı
+    this.ctx.sound?.playJarvisSpeechCadence?.(clean);
+
+    // 1) Önbelleklenmiş ses yanıtı kontrolü (Sıfır Gecikme)
     const cacheKey = `${effectiveLang}:${clean}`;
     if (this._phraseAudioCache?.has(cacheKey) && this.ctx.sound?.playBase64Audio) {
       await this.ctx.sound.playBase64Audio(this._phraseAudioCache.get(cacheKey));
-      this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
+      this._setState(this.listening ? 'listening' : 'idle', { lastReply: raw });
       return true;
     }
 
-    // 1) ElevenLabs Ses Sentezi Denemesi (Yapılandırılmışsa veya açıkça istenmişse)
+    // 2) ElevenLabs Ses Sentezi Denemesi (Yapılandırılmışsa)
     const elevenKey = this._config.elevenLabsApiKey || '';
     const useEleven =
       this._config.ttsProvider === 'elevenlabs' ||
@@ -1471,7 +1522,7 @@ export class JarvisBrain {
           if (payload.ok && payload.audioBase64 && this.ctx.sound?.playBase64Audio) {
             this._phraseAudioCache?.set(cacheKey, payload.audioBase64);
             await this.ctx.sound.playBase64Audio(payload.audioBase64);
-            this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
+            this._setState(this.listening ? 'listening' : 'idle', { lastReply: raw });
             return true;
           }
         }
@@ -1480,50 +1531,96 @@ export class JarvisBrain {
       }
     }
 
-    // 2) Tarayıcı Web Speech API
+    // 3) Tarayıcı Web Speech API (Doğrudan, Canlı ve Ses Garantili)
     let spokeInBrowser = false;
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined') {
-      const voices = window.speechSynthesis.getVoices?.() || [];
-      const matchedVoice =
-        voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(langPrefix)) || null;
+      try {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+      } catch {}
+
+      const voices = this._getVoices();
+      let matchedVoice = null;
+
+      if (langPrefix === 'tr') {
+        matchedVoice =
+          voices.find((v) => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith('tr')) ||
+          voices.find((v) => /turkish|türkçe|tolga|yelda|cem|filiz/i.test(v.name));
+      } else {
+        matchedVoice =
+          voices.find((v) => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith('en')) ||
+          voices.find((v) => /english|daniel|george|david|natural/i.test(v.name));
+      }
+
+      // Sistemde Türkçe ses paketi yoksa bile konuşmasız kalma, varsayılan sistemi kullan!
+      if (!matchedVoice && voices.length > 0) {
+        matchedVoice = voices.find((v) => v.default) || voices[0];
+      }
 
       spokeInBrowser = await new Promise((resolve) => {
         try {
           const utter = new SpeechSynthesisUtterance(clean);
-          utter.lang = effectiveLang;
-          utter.rate = this._config.rate || 1.03;
+          utter.lang = (matchedVoice && matchedVoice.lang) ? matchedVoice.lang : effectiveLang;
+          utter.rate = this._config.rate || 1.02;
           utter.pitch = this._config.pitch || 0.96;
           if (matchedVoice) utter.voice = matchedVoice;
 
+          // Garbage collection koruması
+          window._quantosActiveUtterance = utter;
+          this._activeUtterance = utter;
+
           let settled = false;
+          let heartbeat = null;
+          let glowInterval = null;
+
           const finish = (ok) => {
             if (settled) return;
             settled = true;
+            if (heartbeat) clearInterval(heartbeat);
+            if (glowInterval) clearInterval(glowInterval);
+            window._quantosActiveUtterance = null;
+            this._activeUtterance = null;
             resolve(ok);
           };
 
           utter.onend = () => finish(true);
-          utter.onerror = () => finish(false);
-          setTimeout(() => finish(true), Math.min(18000, Math.max(2500, clean.length * 90)));
+          utter.onerror = (e) => {
+            console.warn('[QuantOS SpeechSynthesis]', e?.error || 'error');
+            finish(false);
+          };
+
+          // Chrome 15-saniye donma baypası
+          heartbeat = setInterval(() => {
+            if (typeof window !== 'undefined' && window.speechSynthesis?.speaking) {
+              window.speechSynthesis.resume();
+            }
+          }, 2000);
+
+          // Arc-Reactor ses spektrum dalgalanması
+          glowInterval = setInterval(() => {
+            if (this.state === 'speaking' && this.ctx.sound?._bumpActivity) {
+              this.ctx.sound._bumpActivity(0.5 + Math.random() * 0.4);
+            }
+          }, 150);
+
+          // Emniyet zaman aşımı
+          const maxDuration = Math.min(25000, Math.max(3000, clean.length * 100));
+          setTimeout(() => finish(true), maxDuration);
 
           window.speechSynthesis.speak(utter);
-
-          if (!matchedVoice && voices.length === 0) {
-            this._triggerHostTts(clean.slice(0, 500), effectiveLang);
-          }
         } catch {
           resolve(false);
         }
       });
     }
 
-    // 3) Ana Bilgisayar Fallback TTS
+    // 4) Ana Bilgisayar Fallback TTS
     if (!spokeInBrowser && typeof fetch === 'function' && typeof window !== 'undefined') {
       await this._triggerHostTts(clean.slice(0, 500), effectiveLang);
     }
 
-    this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
+    this._setState(this.listening ? 'listening' : 'idle', { lastReply: raw });
     return true;
   }
 
@@ -1541,23 +1638,29 @@ export class JarvisBrain {
   }
 
   stopSpeaking() {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // Sessizce geç
+    if (typeof window !== 'undefined') {
+      if (window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {}
       }
+      window._quantosActiveUtterance = null;
     }
+    this._activeUtterance = null;
     if (this.state === 'speaking') {
       this._setState(this.listening ? 'listening' : 'idle');
     }
   }
 
   startListening({ directCommand = false, wakeWordMode = false, continuous = false, lang } = {}) {
-    // Doğrudan tıklamayla dinlemede uyandırma kelimesi zorunluluğu aranmaz
     this.wakeWordMode = directCommand ? false : Boolean(wakeWordMode || continuous || this._config.wakeWordEnabled);
     this._latestHeardText = '';
     const effectiveLang = lang || this._config.lang || 'tr-TR';
+
+    if (this._silenceTimer) {
+      clearTimeout(this._silenceTimer);
+      this._silenceTimer = null;
+    }
 
     if (typeof window === 'undefined') {
       this.listening = false;
@@ -1568,25 +1671,29 @@ export class JarvisBrain {
     if (!SpeechRec) {
       this.listening = false;
       this._setState('idle', {
-        error: 'Tarayıcınız Web Speech API ses tanıma protokolünü desteklemiyor. Lütfen metin komutunu kullanın veya Chrome/Edge tarayıcısında mikrofon iznini etkinleştirin.'
+        error: 'Tarayıcınız Web Speech API ses tanıma protokolünü desteklemiyor. Lütfen Chrome veya Edge tarayıcısında mikrofon iznini etkinleştirin veya komut kutusunu kullanın.'
       });
       return false;
     }
 
     if (this._recognition) {
       try {
-        this._recognition.onend = null;
-        this._recognition.stop();
-      } catch {
-        // Sessizce geç
-      }
+        const oldRec = this._recognition;
+        this._recognition = null;
+        oldRec.onresult = null;
+        oldRec.onerror = null;
+        oldRec.onend = null;
+        oldRec.stop();
+      } catch {}
     }
 
     const rec = new SpeechRec();
     rec.lang = effectiveLang;
-    rec.continuous = this.wakeWordMode;
+    rec.continuous = true; // Kesintileri önlemek ve akıcı dinleme sağlamak için
     rec.interimResults = true;
     rec.maxAlternatives = 1;
+
+    const SILENCE_TIMEOUT_MS = 1400; // 1.4s sessizlik olunca cümle bitti sayılır ve otomatik işlenir
 
     rec.onstart = () => {
       this.listening = true;
@@ -1612,49 +1719,60 @@ export class JarvisBrain {
       if (speechText) {
         this._latestHeardText = speechText;
         this._setState('listening', { interimTranscript: `[Duyulan]: ${speechText}` });
-      }
+        this.ctx.sound?._bumpActivity?.(0.65);
 
-      const trimmed = finalTranscript.trim();
-      if (trimmed) {
-        this._latestHeardText = '';
-        const lower = foldASCII(trimmed);
-        if (!this.wakeWordMode || lower.includes(this.wakeWord)) {
-          this.processCommand(trimmed, { speak: true });
+        // Kullanıcı konuşurken sessizlik zamanlayıcısını yenile
+        if (this._silenceTimer) {
+          clearTimeout(this._silenceTimer);
         }
+        this._silenceTimer = setTimeout(() => {
+          this._commitHeardText('silence');
+        }, SILENCE_TIMEOUT_MS);
       }
     };
 
     rec.onerror = (err) => {
       const errCode = err?.error || 'bilinmeyen';
+
+      // Kullanıcı konuştu ve ardından sessizlik/zaman aşımı hatası olduysa, duyulan metni yine de çalıştır!
+      if (this._latestHeardText && this._latestHeardText.trim()) {
+        this._commitHeardText('error-fallback');
+        return;
+      }
+
+      if (errCode === 'no-speech') {
+        if (!this.wakeWordMode) {
+          this.stopListening({ triggerCommit: false });
+          this._setState('idle', { error: 'Ses algılanmadı efendim.' });
+        }
+        return;
+      }
+
       let trErr = 'Mikrofon hatası: ' + errCode;
       if (errCode === 'not-allowed') {
         trErr = 'Mikrofon erişim izni verilmedi. Lütfen adres çubuğundan mikrofon iznini onaylayın.';
-      } else if (errCode === 'no-speech') {
-        trErr = 'Herhangi bir ses algılanmadı efendim.';
       }
+      this.stopListening({ triggerCommit: false });
       this._setState('idle', { error: trErr });
-      if (!this.wakeWordMode) {
-        this.listening = false;
-      }
     };
 
     rec.onend = () => {
+      if (this._silenceTimer) {
+        clearTimeout(this._silenceTimer);
+        this._silenceTimer = null;
+      }
+
+      // Tanıma sonlandıysa ve elimizde duyulmuş metin varsa çalıştır
+      if (this._latestHeardText && this._latestHeardText.trim()) {
+        this._commitHeardText('onend');
+        return;
+      }
+
       if (this.listening && this.wakeWordMode) {
         try {
           rec.start();
           return;
-        } catch {
-          // Yeniden başlatılamadı
-        }
-      }
-
-      // Kullanıcı konuşmayı bitirdiyse ve metin final olamadan durduysa çalıştır
-      if (this._latestHeardText && this._latestHeardText.trim()) {
-        const pending = this._latestHeardText.trim();
-        this._latestHeardText = '';
-        this._setState('processing', { detail: `İşleniyor: "${pending}"` });
-        this.processCommand(pending, { speak: true });
-        return;
+        } catch {}
       }
 
       this.listening = false;
@@ -1668,30 +1786,69 @@ export class JarvisBrain {
       rec.start();
       this.listening = true;
       return true;
-    } catch {
+    } catch (e) {
       this.listening = false;
+      this._setState('idle', { error: 'Mikrofon başlatılamadı: ' + e.message });
       return false;
     }
   }
 
-  stopListening() {
-    this.listening = false;
-    this.wakeWordMode = false;
-    if (this._recognition) {
-      try {
-        this._recognition.onend = null;
-        this._recognition.stop();
-      } catch {
-        // Sessizce geç
-      }
-      this._recognition = null;
+  _commitHeardText(source = 'auto') {
+    if (this._silenceTimer) {
+      clearTimeout(this._silenceTimer);
+      this._silenceTimer = null;
     }
 
-    // Kullanıcı mikrofon butonunu kapattığında yakalanmış son metni hemen işle
-    if (this._latestHeardText && this._latestHeardText.trim()) {
-      const pending = this._latestHeardText.trim();
+    const pending = (this._latestHeardText || '').trim();
+    this._latestHeardText = '';
+
+    if (!pending) {
+      if (this.state === 'listening' && !this.wakeWordMode) {
+        this.stopListening({ triggerCommit: false });
+      }
+      return;
+    }
+
+    if (this.wakeWordMode) {
+      const lower = foldASCII(pending);
+      if (!lower.includes(this.wakeWord)) {
+        return; // Uyandırma kelimesi bekleniyor
+      }
+    }
+
+    this.stopListening({ triggerCommit: false });
+    this._setState('processing', { detail: `İşleniyor: "${pending}"` });
+    this.ctx.sound?.playJarvisAck?.();
+    this.processCommand(pending, { speak: true });
+  }
+
+  stopListening({ triggerCommit = true } = {}) {
+    if (this._silenceTimer) {
+      clearTimeout(this._silenceTimer);
+      this._silenceTimer = null;
+    }
+
+    this.listening = false;
+    this.wakeWordMode = false;
+
+    const pending = (this._latestHeardText || '').trim();
+
+    if (this._recognition) {
+      try {
+        const rec = this._recognition;
+        this._recognition = null;
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        rec.stop();
+      } catch {}
+    }
+
+    // Kullanıcı mikrofon butonuna basıp kapattığında duyulmuş son metni hemen işle
+    if (triggerCommit && pending) {
       this._latestHeardText = '';
       this._setState('processing', { detail: `İşleniyor: "${pending}"` });
+      this.ctx.sound?.playJarvisAck?.();
       this.processCommand(pending, { speak: true });
       return;
     }
@@ -1703,7 +1860,7 @@ export class JarvisBrain {
 
   toggleListening(options = {}) {
     if (this.listening) {
-      this.stopListening();
+      this.stopListening({ triggerCommit: true });
       return false;
     }
     return this.startListening({ directCommand: true, ...options });

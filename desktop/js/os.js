@@ -124,6 +124,20 @@ async function bootstrapQuantOS() {
     },
   });
 
+  // İlk kullanıcı etkileşiminde Web Audio ve SpeechSynthesis kilidini aç
+  const unlockAudioPipeline = () => {
+    try {
+      sound._ensureContext?.();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.resume();
+      }
+    } catch {}
+    window.removeEventListener('pointerdown', unlockAudioPipeline);
+    window.removeEventListener('keydown', unlockAudioPipeline);
+  };
+  window.addEventListener('pointerdown', unlockAudioPipeline, { passive: true });
+  window.addEventListener('keydown', unlockAudioPipeline, { passive: true });
+
   const osContext = {
     vfs,
     sound,

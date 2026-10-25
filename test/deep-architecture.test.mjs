@@ -144,3 +144,57 @@ test('Deep Architecture — Windows 11 Settings 11 Categories & 64 Modules', asy
     assert.ok(handle, `Settings app must mount section "${sec}" cleanly`);
   }
 });
+
+test('Deep Architecture — J.A.R.V.I.S. Speech Recognition Commit, Silence Debounce & Speech Cadence', async () => {
+  const { JarvisBrain } = await import('../desktop/js/engines/jarvis-brain.js');
+  const { SoundEngine } = await import('../desktop/js/engines/sound-engine.js');
+
+  const sound = new SoundEngine();
+  sound.muted = false;
+  sound.volume = 0.8;
+
+  let ackPlayed = false;
+  let cadencePlayed = false;
+  const originalAck = sound.playJarvisAck.bind(sound);
+  sound.playJarvisAck = () => { ackPlayed = true; originalAck(); };
+  const originalCadence = sound.playJarvisSpeechCadence.bind(sound);
+  sound.playJarvisSpeechCadence = (txt) => { cadencePlayed = true; return originalCadence(txt); };
+
+  const jarvis = new JarvisBrain({
+    osContext: {
+      sound,
+      openApp: () => {}
+    }
+  });
+
+  // Test 1: _sanitizeForSpeech removes markdown formatting
+  const rawText = '### Kuantum Raporu\n**Bell** durumu: `|00> + |11>` oluşturuldu.\nhttps://quantro.org adresi ve /root/projects/QuantOS/kernel/main.c dosyasını inceleyin.';
+  const sanitized = jarvis._sanitizeForSpeech(rawText);
+  assert.ok(!sanitized.includes('###'));
+  assert.ok(!sanitized.includes('**'));
+  assert.ok(!sanitized.includes('`'));
+  assert.ok(sanitized.includes('web bağlantısı'));
+  assert.ok(sanitized.includes('dosya yolu'));
+
+  // Test 2: SoundEngine playJarvisSpeechCadence bumps activity
+  sound.playJarvisSpeechCadence('Kuantum devreleri analizi tamamlandı.');
+  assert.ok(cadencePlayed);
+  assert.ok(sound.getActivityLevel() > 0);
+
+  // Test 3: Closing microphone manually (stopListening with triggerCommit) commits and executes
+  jarvis._latestHeardText = 'Jarvis nasılsın';
+  jarvis.listening = true;
+  jarvis.stopListening({ triggerCommit: true });
+  assert.equal(jarvis.listening, false);
+  assert.equal(jarvis._latestHeardText, '');
+  assert.ok(ackPlayed);
+
+  // Test 4: Silence debounce auto-commit works
+  ackPlayed = false;
+  jarvis._latestHeardText = 'Jarvis saat kaç';
+  jarvis.listening = true;
+  jarvis._commitHeardText('silence');
+  assert.equal(jarvis.listening, false);
+  assert.equal(jarvis._latestHeardText, '');
+  assert.ok(ackPlayed);
+});

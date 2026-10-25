@@ -188,6 +188,30 @@ export class SoundEngine {
     this._tone({ freq: 659.25, type: 'triangle', startOffset: 0.14, duration: 0.12, gain: 0.09 });
   }
 
+  /**
+   * J.A.R.V.I.S. Akustik Konuşma Kadansı ve Fütüristik Harmonik Geri Bildirim
+   * Metin hecelerine ve uzunluğuna göre frekans modülasyonlu yumuşak tonlar üretir.
+   */
+  playJarvisSpeechCadence(text = '') {
+    if (this.muted || this.volume <= 0) return;
+    const clean = String(text || '').trim();
+    const wordCount = Math.min(5, Math.max(2, clean.split(/\s+/).length));
+    const baseFreqs = [523.25, 659.25, 587.33, 783.99, 880];
+
+    for (let i = 0; i < wordCount; i++) {
+      const freq = baseFreqs[i % baseFreqs.length] + ((i * 31) % 70);
+      this._tone({
+        freq,
+        endFreq: freq * (i % 2 === 0 ? 1.06 : 0.95),
+        type: 'sine',
+        startOffset: i * 0.09,
+        duration: 0.08,
+        gain: 0.08
+      });
+    }
+    this._bumpActivity(0.75);
+  }
+
   playQuantumCollapse() {
     this._tone({ freq: 1180, endFreq: 295, type: 'sine', duration: 0.22, gain: 0.15 });
     this._tone({
