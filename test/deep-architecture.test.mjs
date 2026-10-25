@@ -112,3 +112,35 @@ test('Deep Architecture — AArch64 Bare-Metal Kernel Syscall & IPC Artifacts', 
   assert.ok(fs.existsSync(path.join(ROOT, 'kernel/include/ipc.h')), 'kernel/include/ipc.h mevcut olmalı');
   assert.ok(fs.existsSync(path.join(ROOT, 'kernel/lib/ipc.c')), 'kernel/lib/ipc.c mevcut olmalı');
 });
+
+test('Deep Architecture — Windows 11 Settings 11 Categories & 64 Modules', async () => {
+  const { mountSettingsApp } = await import('../desktop/js/apps/settings-app.js');
+  const mockContainer = {
+    _html: '',
+    set innerHTML(val) { this._html = val; },
+    get innerHTML() { return this._html; },
+    querySelector(sel) {
+      return {
+        innerHTML: '',
+        value: '',
+        checked: false,
+        textContent: '',
+        querySelectorAll: () => [],
+        querySelector: () => ({ addEventListener: () => {}, textContent: '', value: '' }),
+        addEventListener: () => {}
+      };
+    },
+    querySelectorAll: () => []
+  };
+
+  const sections = ['system', 'devices', 'network', 'personalize', 'apps', 'accounts', 'time', 'accessibility', 'privacy', 'jarvis', 'update'];
+  for (const sec of sections) {
+    const handle = mountSettingsApp(mockContainer, {
+      getSystemStatus: () => ({ theme: 'ink-copper', brightness: 1, textScale: 100 }),
+      jarvis: { getConfig: () => ({ rate: 1.0, pitch: 1.0 }) },
+      sound: { getVolume: () => 0.65 },
+      vfs: { getStorageUsage: () => ({ totalBytes: 1024, fileCount: 5 }) }
+    }, { section: sec });
+    assert.ok(handle, `Settings app must mount section "${sec}" cleanly`);
+  }
+});

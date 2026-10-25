@@ -72,6 +72,13 @@ async function bootstrapQuantOS() {
     bluetooth: true,
     airplane: false,
     keyboardLayout: 'TR Q',
+    accentColor: localStorage.getItem('quantos.accent') || '#D1925C',
+    taskbarAlign: localStorage.getItem('quantos.taskbarAlign') || 'center',
+    textScale: Number(localStorage.getItem('quantos.scale') || 100),
+    reducedMotion: localStorage.getItem('quantos.reducedMotion') === 'true',
+    highContrast: localStorage.getItem('quantos.highContrast') === 'true',
+    focusMode: localStorage.getItem('quantos.focusMode') === 'true',
+    powerMode: localStorage.getItem('quantos.powerMode') || 'performance',
     pinnedApps: JSON.parse(
       localStorage.getItem('quantos.pinned') ||
         '["qlab","astrolab","qvault","explorer","terminal","code","browser","settings"]'
@@ -95,6 +102,15 @@ async function bootstrapQuantOS() {
   // Apply persisted visual state
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.dataset.nightlight = String(state.nightLight);
+  document.documentElement.dataset.taskbarAlign = state.taskbarAlign;
+  document.documentElement.dataset.scale = String(state.textScale);
+  if (state.reducedMotion) document.documentElement.classList.add('reduced-motion');
+  if (state.highContrast) document.documentElement.dataset.highContrast = 'true';
+  if (state.accentColor) {
+    document.documentElement.style.setProperty('--accent', state.accentColor);
+    document.documentElement.style.setProperty('--accent-fill', state.accentColor);
+    document.documentElement.style.setProperty('--accent-300', state.accentColor);
+  }
   document.documentElement.style.setProperty('--brightness', String(state.brightness));
 
   const wm = new WindowManager({
@@ -197,6 +213,77 @@ async function bootstrapQuantOS() {
       renderTaskbarApps();
       renderStartMenu();
     },
+    setAccentColor(colorHex, name = '') {
+      state.accentColor = colorHex;
+      document.documentElement.style.setProperty('--accent', colorHex);
+      document.documentElement.style.setProperty('--accent-fill', colorHex);
+      document.documentElement.style.setProperty('--accent-300', colorHex);
+      localStorage.setItem('quantos.accent', colorHex);
+      notify('Kişiselleştirme', `Vurgu rengi güncellendi: ${name || colorHex}`);
+    },
+    setTaskbarAlignment(align = 'center') {
+      state.taskbarAlign = align === 'left' ? 'left' : 'center';
+      document.documentElement.dataset.taskbarAlign = state.taskbarAlign;
+      localStorage.setItem('quantos.taskbarAlign', state.taskbarAlign);
+      notify('Görev Çubuğu', `Görev çubuğu hizalaması: ${state.taskbarAlign === 'left' ? 'Sola Dayalı' : 'Ortalanmış'}`);
+    },
+    setTextScale(pct = 100) {
+      state.textScale = Number(pct) || 100;
+      document.documentElement.dataset.scale = String(state.textScale);
+      localStorage.setItem('quantos.scale', String(state.textScale));
+    },
+    setReducedMotion(on) {
+      state.reducedMotion = Boolean(on);
+      document.documentElement.classList.toggle('reduced-motion', state.reducedMotion);
+      localStorage.setItem('quantos.reducedMotion', String(state.reducedMotion));
+    },
+    setHighContrast(on) {
+      state.highContrast = Boolean(on);
+      document.documentElement.dataset.highContrast = String(state.highContrast);
+      localStorage.setItem('quantos.highContrast', String(state.highContrast));
+    },
+    setFocusMode(on) {
+      state.focusMode = Boolean(on);
+      localStorage.setItem('quantos.focusMode', String(state.focusMode));
+      notify('Odaklanma Yardımı', state.focusMode ? 'Rahatsız Etmeyin modu aktif.' : 'Normal bildirim modu devrede.');
+    },
+    setPowerMode(mode = 'performance') {
+      state.powerMode = mode;
+      localStorage.setItem('quantos.powerMode', mode);
+      notify('Güç Modu', `Güç modu: ${mode.toUpperCase()}`);
+    },
+    exportBackup() {
+      const data = {
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        vfsFiles: vfs.search('', 'C:/'),
+        settings: {
+          theme: state.theme,
+          wallpaper: state.wallpaper,
+          brightness: state.brightness,
+          nightLight: state.nightLight,
+          accentColor: state.accentColor,
+          taskbarAlign: state.taskbarAlign,
+          textScale: state.textScale,
+          reducedMotion: state.reducedMotion,
+          highContrast: state.highContrast,
+          focusMode: state.focusMode,
+          powerMode: state.powerMode,
+          pinnedApps: state.pinnedApps,
+          jarvis: jarvis ? jarvis.getConfig() : {}
+        }
+      };
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quantos-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      notify('Sistem Yedekleme', 'Tüm VFS dosyaları ve ayarlar JSON dosyasına aktarıldı.');
+      return true;
+    },
     getCurrentFps: () => state.fps,
     apps: APP_REGISTRY,
     getSystemStatus() {
@@ -209,6 +296,16 @@ async function bootstrapQuantOS() {
         nightLight: state.nightLight,
         hudVisible: state.hudVisible,
         activeDesktop: wm.activeDesktop,
+        accentColor: state.accentColor,
+        taskbarAlign: state.taskbarAlign,
+        textScale: state.textScale,
+        reducedMotion: state.reducedMotion,
+        highContrast: state.highContrast,
+        focusMode: state.focusMode,
+        powerMode: state.powerMode,
+        wifi: state.wifi,
+        bluetooth: state.bluetooth,
+        keyboardLayout: state.keyboardLayout
       };
     },
   };
