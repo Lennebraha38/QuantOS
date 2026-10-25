@@ -171,6 +171,26 @@ export function mountJarvisApp(container, osContext, args = {}) {
   });
 
   listenBtn.addEventListener('click', () => {
+    // Ses alt sistemini ve konuşma sentezini kullanıcı etkileşimiyle uyandır
+    try {
+      sound?._ensureContext?.();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.resume();
+      }
+      if (!jarvis.listening && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+          if (sound?._ctx && sound?._analyser) {
+            try {
+              const srcNode = sound._ctx.createMediaStreamSource(stream);
+              srcNode.connect(sound._analyser);
+            } catch {}
+          }
+        }).catch((err) => {
+          console.warn('[QuantOS Mic İzni]', err.message);
+        });
+      }
+    } catch {}
+
     jarvis.toggleListening();
   });
 

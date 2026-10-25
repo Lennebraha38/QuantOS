@@ -319,23 +319,43 @@ async function handleApiTts(req, res) {
     const espeakBin = findExecutableInPath('espeak-ng');
     if (espeakBin) {
       const voice = safeLang.toLowerCase().startsWith('tr') ? 'tr' : 'en';
-      const child = spawn(espeakBin, ['-v', voice, '--', cleanText], {
-        shell: false,
-        stdio: 'ignore'
-      });
-      activeTtsChild = child;
-      child.on('error', () => {});
-      child.on('exit', () => {
-        if (activeTtsChild === child) activeTtsChild = null;
-      });
-      child.unref();
-      sendJson(res, 200, {
-        ok: true,
-        spokenOnHost: true,
-        engine: 'espeak-ng',
-        lang: safeLang
-      });
-      return;
+      const tmpWav = path.join(os.tmpdir(), `quantos-tts-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.wav`);
+      try {
+        await new Promise((resolve, reject) => {
+          const child = spawn(espeakBin, ['-v', voice, '-s', '150', '-p', '42', '-w', tmpWav, '--', cleanText], {
+            stdio: 'ignore'
+          });
+          const timer = setTimeout(() => {
+            try { child.kill('SIGKILL'); } catch {}
+            reject(new Error('TTS zaman aşımı'));
+          }, 4500);
+          child.on('exit', (code) => {
+            clearTimeout(timer);
+            if (code === 0) resolve();
+            else reject(new Error('Espeak çıkış kodu: ' + code));
+          });
+          child.on('error', (err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+        });
+
+        if (fs.existsSync(tmpWav)) {
+          const wavBuffer = await fs.promises.readFile(tmpWav);
+          await fs.promises.unlink(tmpWav).catch(() => {});
+          sendJson(res, 200, {
+            ok: true,
+            provider: 'espeak-ng',
+            audioBase64: wavBuffer.toString('base64'),
+            mime: 'audio/wav',
+            lang: safeLang
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('[QuantOS Espeak WAV]', err.message);
+        if (fs.existsSync(tmpWav)) await fs.promises.unlink(tmpWav).catch(() => {});
+      }
     }
   } catch {
     // Never return 500 if host audio subsystem is unavailable

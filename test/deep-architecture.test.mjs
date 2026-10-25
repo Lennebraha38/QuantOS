@@ -197,4 +197,55 @@ test('Deep Architecture — J.A.R.V.I.S. Speech Recognition Commit, Silence Debo
   assert.equal(jarvis.listening, false);
   assert.equal(jarvis._latestHeardText, '');
   assert.ok(ackPlayed);
+
+  // Test 5: Empty mic close gives immediate spoken feedback instead of dead silence
+  jarvis._latestHeardText = '';
+  jarvis.listening = true;
+  jarvis.stopListening({ triggerCommit: true });
+  assert.equal(jarvis.listening, false);
+  const history = jarvis.getHistory();
+  const lastEntry = history[history.length - 1];
+  assert.equal(lastEntry.intent, 'mic.no_input');
+  assert.ok(lastEntry.reply.includes('Sizi tam duyamadım'));
+});
+
+test('Deep Architecture — J.A.R.V.I.S. Ultra Zeka Cognitive Capabilities', async () => {
+  const { JarvisBrain } = await import('../desktop/js/engines/jarvis-brain.js');
+  const jarvis = new JarvisBrain({
+    osContext: {
+      sound: { playJarvisAck: () => {}, playQuantumCollapse: () => {}, playJarvisSpeechCadence: () => {} },
+      openApp: () => {}
+    }
+  });
+
+  // 1. Math Evaluator
+  const mathRes = await jarvis.processCommand('hesapla: 25 çarpı 48');
+  assert.equal(mathRes.intent, 'math.eval');
+  assert.ok(mathRes.reply.includes('1200'));
+
+  // 2. Special Relativity
+  const relRes = await jarvis.processCommand('özel görelilik hız 0.8c');
+  assert.equal(relRes.intent, 'physics.relativity');
+  assert.ok(relRes.reply.includes('Lorentz faktörü'));
+  assert.ok(relRes.data.gamma > 1.6);
+
+  // 3. Escape Velocity
+  const escRes = await jarvis.processCommand('Dünya kurtulma hızı nedir?');
+  assert.equal(escRes.intent, 'astro.escape_velocity');
+  assert.ok(escRes.reply.includes('11.186'));
+
+  // 4. Photon Energy
+  const fotonRes = await jarvis.processCommand('500 nm foton enerjisi hesapla');
+  assert.equal(fotonRes.intent, 'quantum.photon_energy');
+  assert.ok(fotonRes.reply.includes('eV'));
+
+  // 5. Code Assistant
+  const codeRes = await jarvis.processCommand('Python kuantum kod yaz');
+  assert.equal(codeRes.intent, 'assistant.code_gen');
+  assert.ok(codeRes.reply.includes('def bell_fidelity'));
+
+  // 6. Quantum Interpretations
+  const interRes = await jarvis.processCommand('Kopenhag ve çoklu dünyalar yorumu');
+  assert.equal(interRes.intent, 'chat.quantum_interpretations');
+  assert.ok(interRes.reply.includes('Hugh Everett'));
 });
