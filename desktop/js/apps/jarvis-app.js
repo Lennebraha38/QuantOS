@@ -6,13 +6,13 @@
 import { ICONS } from './icons.js';
 
 const MACROS = [
+  { label: 'Nasıl Gidiyor?', cmd: 'Jarvis nasılsın' },
+  { label: 'Bir Espri Yap', cmd: 'Jarvis bana bir espri yap' },
+  { label: 'Kuantum Dolanıklığı Anlat', cmd: 'Jarvis kuantum dolanıklığı anlat' },
   { label: 'Bell Dolanıklık Durumu', cmd: 'Jarvis Bell durumu oluştur' },
-  { label: 'GHZ 3-Kübit Durumu', cmd: 'Jarvis GHZ durumu çalıştır' },
   { label: '10 M☉ Kara Delik Analizi', cmd: 'Jarvis 10 güneş kütleli kara delik hesapla' },
   { label: 'Dinleyicili BB84 Testi', cmd: 'Jarvis dinleyicili BB84 simülasyonu çalıştır' },
-  { label: 'z=1.5 Kozmoloji Hesabı', cmd: 'Jarvis z=1.5 kozmoloji hesapla' },
-  { label: 'Yıldız Zamanı (Kayseri)', cmd: 'Jarvis yıldız zamanı nedir' },
-  { label: 'Pencereleri Yan Yana Diz', cmd: 'Jarvis pencereleri yan yana diz' },
+  { label: 'Bay Stark Kimdir?', cmd: 'Jarvis Tony Stark kimdir' },
   { label: 'Sistem Durum Raporu', cmd: 'Jarvis sistem durumunu raporla' },
 ];
 
@@ -79,16 +79,16 @@ export function mountJarvisApp(container, osContext, args = {}) {
           <div class="jarvis-chat-col">
             <div class="jarvis-log" id="jv-chat-log" aria-live="polite"></div>
             <form id="jv-form" style="display:flex;gap:8px;">
-              <input type="text" class="input" id="jv-input" placeholder="J.A.R.V.I.S.'e Türkçe veya İngilizce komut yazın (örn. 25 güneş kütleli kara delik hesapla)..." autocomplete="off" />
-              <button type="submit" class="btn btn-primary">Çalıştır</button>
+              <input type="text" class="input" id="jv-input" placeholder="J.A.R.V.I.S.'e Türkçe veya İngilizce soru sorun ya da komut verin (sohbet, bilim, sistem)..." autocomplete="off" />
+              <button type="submit" class="btn btn-primary">Gönder</button>
             </form>
           </div>
         </div>
       </div>
 
       <div class="app-statusbar">
-        <span>Protokol: Web Speech API + /api/tts Yerel Köprü</span>
-        <span id="jv-provenance">Motor: QuantOS Deterministik Bilimsel NLU v1.0</span>
+        <span>Protokol: ElevenLabs Ultra-Gerçekçi AI Sesi + Web Speech + Bilimsel/Genel Sohbet</span>
+        <span id="jv-provenance">Motor: QuantOS J.A.R.V.I.S. NLU &amp; Konuşma Çekirdeği</span>
       </div>
     </div>
   `;

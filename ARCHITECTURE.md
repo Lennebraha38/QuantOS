@@ -23,7 +23,7 @@ flowchart TD
     subgraph L2["Katman 2: İzomorfik Bilimsel Motorlar & Arka Uç (server.mjs + desktop/js/engines/)"]
         ENG["quantum | bb84 | astro | vfs | sound | jarvis-brain"]
         SRV["server.mjs (HTTP :3800, Sıfır Harici NPM Bağımlılığı)"]
-        API["/api/system | /api/qrng | /api/tts | /api/health"]
+        API["/api/system | /api/qrng | /api/tts (ElevenLabs/Host) | /api/terminal/exec | /api/proxy | /api/health"]
         SRV --> API
     end
 

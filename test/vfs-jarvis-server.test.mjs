@@ -103,7 +103,31 @@ test('NBodySystem.addBody: dynamically added bodies preserve finite energy witho
   assert.ok(Number.isFinite(e.total), 'NBodySystem toplam enerjisi sonlu sayı olmalı (NaN olmamalı)');
 });
 
-test('QuantOS HTTP Server: CSP header, health, delta CPU system telemetry, QRNG, TTS, and path traversal guard', async () => {
+test('JarvisBrain: rich conversational intelligence and personality dialog', async () => {
+  const brain = new JarvisBrain();
+
+  const chat1 = await brain.processCommand('Jarvis nasılsın bugün?');
+  assert.equal(chat1.intent, 'chat.chitchat');
+  assert.ok(chat1.reply.includes('Kayseri') || chat1.reply.includes('kuantum') || chat1.reply.includes('telemetri'));
+
+  const chat2 = await brain.processCommand('Bana bir espri yap');
+  assert.equal(chat2.intent, 'chat.joke');
+  assert.ok(chat2.reply.length > 10);
+
+  const chat3 = await brain.processCommand('Kuantum dolanıklık nedir anlat');
+  assert.equal(chat3.intent, 'chat.science');
+  assert.ok(chat3.reply.includes('Bell') || chat3.reply.includes('kübit') || chat3.reply.includes('kuantum'));
+
+  const chat4 = await brain.processCommand('Tony Stark kimdir');
+  assert.equal(chat4.intent, 'chat.lore');
+  assert.ok(chat4.reply.includes('Stark'));
+
+  const chat5 = await brain.processCommand('Hayatın anlamı nedir');
+  assert.equal(chat5.intent, 'chat.philosophy');
+  assert.ok(chat5.reply.includes('42') || chat5.reply.includes('Quantro'));
+});
+
+test('QuantOS HTTP Server: CSP header, health, delta CPU system telemetry, QRNG, TTS, terminal exec, proxy SSRF guard, and path traversal guard', async () => {
   const server = createQuantOSServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
@@ -126,6 +150,41 @@ test('QuantOS HTTP Server: CSP header, health, delta CPU system telemetry, QRNG,
     const qJson = await qRes.json();
     assert.equal(qJson.bytes.length, 16);
     assert.ok(qJson.source);
+
+    // Terminal Exec Test
+    const termRes = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'echo "QUANTOS_TEST_OK"', cwd: '/root/projects/QuantOS' })
+    });
+    assert.equal(termRes.status, 200);
+    const termJson = await termRes.json();
+    assert.equal(termJson.ok, true);
+    assert.ok(termJson.stdout.includes('QUANTOS_TEST_OK'));
+    assert.equal(termJson.exitCode, 0);
+
+    // Terminal cd Test
+    const cdRes = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'cd /tmp', cwd: '/root/projects/QuantOS' })
+    });
+    assert.equal(cdRes.status, 200);
+    const cdJson = await cdRes.json();
+    assert.equal(cdJson.ok, true);
+    assert.equal(cdJson.cwd, '/tmp');
+
+    // Proxy SSRF Protection Tests
+    const loopbackRes = await fetch(`${base}/api/proxy?url=http://127.0.0.1:${port}/api/health`);
+    assert.equal(loopbackRes.status, 403);
+    const loopJson = await loopbackRes.json();
+    assert.ok(loopJson.error?.includes('SSRF'));
+
+    const metaRes = await fetch(`${base}/api/proxy?url=http://169.254.169.254/latest/meta-data/`);
+    assert.equal(metaRes.status, 403);
+
+    const localRes = await fetch(`${base}/api/proxy?url=http://localhost:8080/`);
+    assert.equal(localRes.status, 403);
 
     const travRes = await fetch(`${base}/../../etc/passwd`);
     assert.ok([400, 403, 404].includes(travRes.status));

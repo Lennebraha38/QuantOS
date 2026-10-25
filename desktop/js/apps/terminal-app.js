@@ -9,21 +9,31 @@ import { blackHoleMetrics, cosmologyMetrics, siderealAndJulian } from '../engine
 const COMMAND_LIST = [
   'help', 'clear', 'ls', 'dir', 'cd', 'pwd', 'cat', 'mkdir', 'touch', 'write', 'rm',
   'cp', 'mv', 'find', 'sysinfo', 'neofetch', 'ps', 'kill', 'qsim', 'bb84', 'qrng',
-  'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'whoami', 'date', 'echo'
+  'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'whoami', 'date', 'echo',
+  'uname', 'git', 'python3', 'node', 'npm', 'make', 'curl', 'grep', 'df', 'free', 'top'
 ];
 
 export function mountTerminalApp(container, osContext) {
   const vfs = osContext.vfs;
   const tabs = [
-    { id: 1, title: 'QuantShell 7.4', cwd: 'C:/Users/Quantro', lines: [], history: [], histIdx: -1 },
+    {
+      id: 1,
+      title: 'QuantShell & Bash',
+      cwd: 'C:/Users/Quantro',
+      hostCwd: '/root/projects/QuantOS',
+      lines: [],
+      history: [],
+      histIdx: -1
+    },
   ];
   let activeTabId = 1;
   let tabSeq = 2;
 
   function bootLines() {
     return [
-      { cls: 'ok', text: 'QuantOS PowerShell / QuantShell [Sürüm 24H2 · AArch64 + Bilimsel Çekirdek]' },
-      { cls: '', text: '(c) 2026 Quantro AR-GE. Komut listesi için "help" veya "jarvis <soru>" yazın.' },
+      { cls: 'ok', text: 'QuantOS PowerShell & Bash Çift Katmanlı Terminal [Sürüm 24H2 · AArch64]' },
+      { cls: '', text: 'Yerleşik kuantum/astrofizik komutları ve tüm Linux sistem araçları (ls, uname, git, python3, ...) doğrudan çalıştırılabilir.' },
+      { cls: 'muted', text: 'Komut listesi için "help", J.A.R.V.I.S. için "jarvis <soru>" yazabilirsiniz.' },
     ];
   }
   tabs[0].lines = bootLines();
@@ -317,8 +327,50 @@ export function mountTerminalApp(container, osContext) {
           pushOut(t, `[J.A.R.V.I.S.] ${res.reply}`, 'ok');
           break;
         }
-        default:
-          pushOut(t, `Komut tanınmadı: "${cmd}". Yardım için "help" veya "jarvis ${line}" deneyin.`, 'err');
+        default: {
+          // Gerçek ana makine terminaline (/bin/bash) bağlanarak çalıştır
+          let executedOnHost = false;
+          if (typeof fetch === 'function') {
+            try {
+              const resp = await fetch('/api/terminal/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  command: line,
+                  cwd: t.hostCwd || '/root/projects/QuantOS'
+                }),
+                signal: AbortSignal.timeout(32000)
+              });
+              if (resp.ok) {
+                const data = await resp.json();
+                if (data.cwd) {
+                  t.hostCwd = data.cwd;
+                  t.cwd = data.cwd.replace(/^\/root/, 'C:/QuantOS').replace(/\//g, '/');
+                }
+                if (data.stdout) {
+                  pushOut(t, data.stdout.replace(/\n+$/, ''), '');
+                }
+                if (data.stderr) {
+                  pushOut(t, data.stderr.replace(/\n+$/, ''), 'err');
+                }
+                if (data.exitCode !== 0 && !data.stdout && !data.stderr) {
+                  pushOut(t, `Süreç çıkış kodu: ${data.exitCode}`, 'err');
+                }
+                executedOnHost = true;
+              }
+            } catch {
+              // Ağ/sunucu erişilemiyorsa yerel geri dönüşe düş
+            }
+          }
+
+          if (!executedOnHost) {
+            pushOut(
+              t,
+              `Komut tanınmadı: "${cmd}". Yardım için "help", Linux araçları için terminal sunucusunu kontrol edin veya "jarvis ${line}" deneyin.`,
+              'err'
+            );
+          }
+        }
       }
     } catch (err) {
       pushOut(t, `Hata: ${err.message}`, 'err');

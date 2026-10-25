@@ -39,7 +39,7 @@ const SECURITY_HEADERS = Object.freeze({
   'X-Frame-Options': 'SAMEORIGIN',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; frame-src https: http:; object-src 'none'; base-uri 'self'"
+    "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; frame-src https: http: 'self'; object-src 'none'; base-uri 'self'"
 });
 
 function sendJson(res, statusCode, payload) {
@@ -237,6 +237,54 @@ async function handleApiTts(req, res) {
   const rawLang = typeof body?.lang === 'string' ? body.lang.trim() : 'tr-TR';
   const safeLang = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/.test(rawLang) ? rawLang : 'tr-TR';
 
+  // 1) ElevenLabs Ses Sentezi Entegrasyonu
+  const elevenLabsKey = (typeof body?.apiKey === 'string' && body.apiKey.trim()) || process.env.ELEVENLABS_API_KEY || '';
+  const wantElevenLabs = body?.provider === 'elevenlabs' || (Boolean(elevenLabsKey) && body?.provider !== 'system' && body?.provider !== 'webspeech');
+
+  if (wantElevenLabs && elevenLabsKey) {
+    const voiceId = (typeof body?.voiceId === 'string' && body.voiceId.trim()) || process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgDQGcFmaJgB';
+    const modelId = (typeof body?.modelId === 'string' && body.modelId.trim()) || 'eleven_multilingual_v2';
+    try {
+      const elResp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': elevenLabsKey,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg'
+        },
+        body: JSON.stringify({
+          text: cleanText,
+          model_id: modelId,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.85
+          }
+        }),
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (elResp.ok) {
+        const audioBuf = Buffer.from(await elResp.arrayBuffer());
+        sendJson(res, 200, {
+          ok: true,
+          provider: 'elevenlabs',
+          voiceId,
+          modelId,
+          audioBase64: audioBuf.toString('base64'),
+          mime: 'audio/mpeg',
+          lang: safeLang
+        });
+        return;
+      } else {
+        const errBody = await elResp.text().catch(() => '');
+        console.warn(`[QuantOS ElevenLabs Uyarısı] HTTP ${elResp.status}: ${errBody.slice(0, 160)}`);
+      }
+    } catch (elErr) {
+      console.warn('[QuantOS ElevenLabs Hatası]', elErr.message);
+    }
+  }
+
+  // 2) Yerel Ana Bilgisayar TTS Motorları (Termux / espeak-ng)
   try {
     if (activeTtsChild && !activeTtsChild.killed) {
       try {
@@ -298,6 +346,344 @@ async function handleApiTts(req, res) {
     spokenOnHost: false,
     reason: 'browser-webspeech-primary',
     lang: safeLang
+  });
+}
+
+function isPrivateIpOrHost(hostname) {
+  if (!hostname) return true;
+  let h = hostname.toLowerCase().trim();
+  if (h.startsWith('[') && h.endsWith(']')) {
+    h = h.slice(1, -1);
+  }
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0' || h === '::') return true;
+  if (h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.onion')) return true;
+
+  // Tekil tamsayı IPv4 gösterimi (örn: 2130706433 = 127.0.0.1)
+  if (/^\d+$/.test(h)) {
+    const intVal = Number(h);
+    if (!Number.isFinite(intVal)) return true;
+    const a = (intVal >>> 24) & 255;
+    if (a === 127 || a === 10 || a === 0) return true;
+  }
+
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+  }
+
+  // IPv6 döngü/bağlantı yereli kontrolü
+  if (h.includes(':')) {
+    if (h.startsWith('fe80:') || h.startsWith('fc00:') || h.startsWith('fd00:') || h === '::1') return true;
+  }
+
+  return false;
+}
+
+async function handleApiTerminalExec(req, res) {
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (err) {
+    sendJson(res, 400, { ok: false, error: err.message || 'Geçersiz JSON verisi.' });
+    return;
+  }
+
+  const rawCmd = typeof body?.command === 'string' ? body.command.trim() : '';
+  let curDir = typeof body?.cwd === 'string' && body.cwd.trim() ? path.resolve(body.cwd.trim()) : '/root/projects/QuantOS';
+
+  if (!fs.existsSync(curDir) || !fs.statSync(curDir).isDirectory()) {
+    curDir = '/root/projects/QuantOS';
+  }
+
+  if (!rawCmd) {
+    sendJson(res, 200, { ok: true, stdout: '', stderr: '', exitCode: 0, cwd: curDir });
+    return;
+  }
+
+  // Özel cd işleyicisi (çalışma dizinini canlı güncellemek için)
+  const cdMatch = rawCmd.match(/^cd(?:\s+(.*))?$/);
+  if (cdMatch) {
+    const rawTarget = (cdMatch[1] || '').trim();
+    let target = rawTarget || (process.env.HOME || '/root');
+    if (target === '~' || target.startsWith('~/')) {
+      target = target.replace(/^~/, process.env.HOME || '/root');
+    }
+    const nextDir = path.resolve(curDir, target);
+    try {
+      if (fs.existsSync(nextDir) && fs.statSync(nextDir).isDirectory()) {
+        sendJson(res, 200, {
+          ok: true,
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+          cwd: nextDir
+        });
+        return;
+      } else {
+        sendJson(res, 200, {
+          ok: true,
+          stdout: '',
+          stderr: `cd: dizin bulunamadı: ${rawTarget}\n`,
+          exitCode: 1,
+          cwd: curDir
+        });
+        return;
+      }
+    } catch (cdErr) {
+      sendJson(res, 200, {
+        ok: true,
+        stdout: '',
+        stderr: `cd: ${cdErr.message}\n`,
+        exitCode: 1,
+        cwd: curDir
+      });
+      return;
+    }
+  }
+
+  const shellBin = fs.existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh';
+  let stdout = '';
+  let stderr = '';
+  let killed = false;
+
+  const child = spawn(shellBin, ['-c', rawCmd], {
+    cwd: curDir,
+    env: {
+      ...process.env,
+      TERM: 'xterm-256color',
+      LANG: 'en_US.UTF-8',
+      LC_ALL: 'en_US.UTF-8'
+    },
+    shell: false
+  });
+
+  const timer = setTimeout(() => {
+    killed = true;
+    try {
+      child.kill('SIGKILL');
+    } catch {}
+  }, 30000);
+
+  child.stdout.on('data', (buf) => {
+    if (stdout.length < 524288) stdout += buf.toString('utf8');
+  });
+
+  child.stderr.on('data', (buf) => {
+    if (stderr.length < 262144) stderr += buf.toString('utf8');
+  });
+
+  child.on('close', (code) => {
+    clearTimeout(timer);
+    if (killed) {
+      stderr += '\n[QuantShell] Komut zaman aşımına uğradı (30s sınır).\n';
+    }
+    sendJson(res, 200, {
+      ok: true,
+      stdout,
+      stderr,
+      exitCode: code ?? (killed ? 124 : 0),
+      cwd: curDir
+    });
+  });
+
+  child.on('error', (err) => {
+    clearTimeout(timer);
+    sendJson(res, 200, {
+      ok: false,
+      stdout,
+      stderr: `Kabuk çalıştırma hatası: ${err.message}\n`,
+      exitCode: 1,
+      cwd: curDir
+    });
+  });
+}
+
+async function handleApiProxy(urlObj, req, res) {
+  const rawTarget = urlObj.searchParams.get('url') || '';
+  if (!rawTarget) {
+    sendJson(res, 400, { ok: false, error: 'url parametresi zorunludur.' });
+    return;
+  }
+
+  let candidate = rawTarget.trim();
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    sendJson(res, 400, { ok: false, error: 'Geçersiz hedef URL biçimi.' });
+    return;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    sendJson(res, 400, { ok: false, error: 'Yalnızca HTTP ve HTTPS protokolleri desteklenir.' });
+    return;
+  }
+
+  if (isPrivateIpOrHost(parsed.hostname)) {
+    sendJson(res, 403, {
+      ok: false,
+      error: 'SSRF Koruması: Yerel veya özel ağ adreslerine erişim engellendi.'
+    });
+    return;
+  }
+
+  try {
+    const upstreamResp = await fetch(parsed.href, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 QuantOS/1.0 QuantroEdge/1.0',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(18000)
+    });
+
+    const contentType = upstreamResp.headers.get('content-type') || 'text/html';
+    const isHtml = contentType.includes('text/html');
+
+    if (isHtml) {
+      let html = await upstreamResp.text();
+      const baseTag = `<base href="${parsed.href}">`;
+      const interceptScript = `
+        <script>
+          (function() {
+            document.addEventListener('click', function(e) {
+              var a = e.target.closest('a');
+              if (a && a.href && !a.href.startsWith('javascript:') && !a.href.startsWith('#')) {
+                e.preventDefault();
+                window.location.href = '/api/proxy?url=' + encodeURIComponent(a.href);
+              }
+            }, true);
+            document.addEventListener('submit', function(e) {
+              var form = e.target;
+              if (form && form.action && form.method.toLowerCase() === 'get') {
+                e.preventDefault();
+                var fd = new FormData(form);
+                var q = new URLSearchParams(fd).toString();
+                var sep = form.action.includes('?') ? '&' : '?';
+                window.location.href = '/api/proxy?url=' + encodeURIComponent(form.action + sep + q);
+              }
+            }, true);
+          })();
+        </script>
+      `;
+
+      if (html.includes('<head>')) {
+        html = html.replace('<head>', `<head>${baseTag}${interceptScript}`);
+      } else {
+        html = `${baseTag}${interceptScript}${html}`;
+      }
+
+      res.writeHead(upstreamResp.status, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=60',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      res.end(html);
+      return;
+    }
+
+    // Binary / Diğer içerikler (Görseller, CSS, vb.)
+    const buf = Buffer.from(await upstreamResp.arrayBuffer());
+    res.writeHead(upstreamResp.status, {
+      'Content-Type': contentType,
+      'Content-Length': buf.length,
+      'Cache-Control': 'public, max-age=300',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    res.end(buf);
+  } catch (proxyErr) {
+    const errorPage = `
+      <!DOCTYPE html>
+      <html lang="tr">
+      <head><meta charset="utf-8"><title>Quantro Edge — Bağlantı Hatası</title>
+      <style>body{font-family:sans-serif;background:#0E0F12;color:#E6EDF3;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}.card{background:#1A1D23;padding:24px;border-radius:12px;max-width:540px;border:1px solid #333;}h2{color:#D1925C;margin-top:0;}code{background:#000;padding:2px 6px;border-radius:4px;color:#38BDF8;font-size:13px;}</style>
+      </head>
+      <body>
+        <div class="card">
+          <h2>Sayfaya Ulaşılamadı</h2>
+          <p>Quantro Edge Web Proxy hedef sunucuya bağlanırken bir sorunla karşılaştı:</p>
+          <p><code>${proxyErr.message}</code></p>
+          <p style="font-size:13px;color:#8B949E;">Hedef Adres: ${parsed.href}</p>
+        </div>
+      </body>
+      </html>
+    `;
+    res.writeHead(502, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(errorPage);
+  }
+}
+
+async function handleApiChat(req, res) {
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (err) {
+    sendJson(res, 400, { ok: false, error: err.message || 'Geçersiz JSON.' });
+    return;
+  }
+
+  const message = typeof body?.message === 'string' ? body.message.trim() : '';
+  if (!message) {
+    sendJson(res, 400, { ok: false, error: 'Mesaj boş olamaz.' });
+    return;
+  }
+
+  const apiKey = (typeof body?.apiKey === 'string' && body.apiKey.trim()) || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || '';
+  const endpoint = (typeof body?.endpoint === 'string' && body.endpoint.trim()) || process.env.LLM_ENDPOINT || '';
+  const model = (typeof body?.model === 'string' && body.model.trim()) || process.env.LLM_MODEL || 'gpt-4o-mini';
+
+  if (endpoint && typeof fetch === 'function') {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      const upstream = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Sen Quantro AR-GE (Kayseri) bünyesindeki QuantOS işletim sisteminin yapay zekâ asistanı J.A.R.V.I.S.\'sin. Tony Stark\'ın J.A.R.V.I.S. asistanı tarzında; kibar, sadık, son derece zeki, esprili, bilimsel ve yardımseversin. Türkçe ve İngilizce sorulara kusursuz cevap verirsin.'
+            },
+            ...(Array.isArray(body?.history) ? body.history : []),
+            { role: 'user', content: message }
+          ],
+          temperature: 0.6
+        }),
+        signal: AbortSignal.timeout(20000)
+      });
+
+      if (upstream.ok) {
+        const json = await upstream.json();
+        const reply = json?.choices?.[0]?.message?.content?.trim() || json?.response || json?.reply;
+        if (reply) {
+          sendJson(res, 200, { ok: true, reply, source: 'external-llm', model });
+          return;
+        }
+      }
+    } catch (llmErr) {
+      console.warn('[QuantOS Chat] Harici LLM hatası:', llmErr.message);
+    }
+  }
+
+  // Yerleşik akıllı sohbet yanıtı
+  sendJson(res, 200, {
+    ok: true,
+    reply: `Sorunuzu aldım efendim: "${message}". Kuantum ve astrofizik hesaplamaları, sistem operasyonları veya genel konularda her an emrinizdeyim.`,
+    source: 'quantos-jarvis-core'
   });
 }
 
@@ -489,6 +875,33 @@ export function createQuantOSServer(options = {}) {
           return;
         }
         await handleApiTts(req, res);
+        return;
+      }
+
+      if (pathname === '/api/terminal/exec') {
+        if (method !== 'POST') {
+          sendJson(res, 405, { ok: false, error: 'Yalnızca POST desteklenir.' });
+          return;
+        }
+        await handleApiTerminalExec(req, res);
+        return;
+      }
+
+      if (pathname === '/api/proxy') {
+        if (method !== 'GET' && method !== 'HEAD') {
+          sendJson(res, 405, { ok: false, error: 'Yalnızca GET ve HEAD desteklenir.' });
+          return;
+        }
+        await handleApiProxy(urlObj, req, res);
+        return;
+      }
+
+      if (pathname === '/api/chat') {
+        if (method !== 'POST') {
+          sendJson(res, 405, { ok: false, error: 'Yalnızca POST desteklenir.' });
+          return;
+        }
+        await handleApiChat(req, res);
         return;
       }
 

@@ -279,6 +279,55 @@ export class SoundEngine {
     }
   }
 
+  async playAudioBuffer(arrayBuffer) {
+    if (this.muted || this.volume <= 0) return false;
+    const ctx = this._ensureContext();
+    if (!ctx) return false;
+
+    try {
+      // Create a slice copy as decodeAudioData detaches the buffer
+      const bufferCopy = arrayBuffer.slice(0);
+      const audioBuffer = await ctx.decodeAudioData(bufferCopy);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+
+      if (this._analyser) {
+        source.connect(this._analyser);
+      } else if (this._masterGain) {
+        source.connect(this._masterGain);
+      } else {
+        source.connect(ctx.destination);
+      }
+
+      this._recentImpulses.push({ start: performance.now(), peak: 0.95, duration: audioBuffer.duration });
+      if (this._recentImpulses.length > 8) this._recentImpulses.shift();
+
+      return new Promise((resolve) => {
+        source.onended = () => resolve(true);
+        source.start(0);
+      });
+    } catch (err) {
+      console.warn('[QuantOS Sound] Ses verisi çözme hatası:', err.message);
+      return false;
+    }
+  }
+
+  async playBase64Audio(base64Str) {
+    if (!base64Str || typeof base64Str !== 'string') return false;
+    try {
+      const binary = atob(base64Str);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return await this.playAudioBuffer(bytes.buffer);
+    } catch (e) {
+      console.warn('[QuantOS Sound] Base64 çözümleme hatası:', e.message);
+      return false;
+    }
+  }
+
   getFrequencyData(binCount = 36) {
     const out = new Float32Array(binCount);
     if (this.muted || this.volume <= 0) return out;

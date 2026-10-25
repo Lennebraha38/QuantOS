@@ -320,34 +320,72 @@ async function bootstrapQuantOS() {
       const app = APP_MAP.get(id);
       if (!app) return '';
       return `
-        <button type="button" class="desktop-icon ${state.selectedDesktopIcon === id ? 'selected' : ''}" data-app="${id}" role="listitem">
+        <button type="button" class="desktop-icon ${state.selectedDesktopIcon === id ? 'selected' : ''}" data-app="${id}" role="listitem" tabindex="0" title="${escapeHtml(app.title)}">
           <span class="desktop-icon-glyph">${getAppIcon(id)}</span>
-          <span class="desktop-icon-label">${app.shortTitle}</span>
+          <span class="desktop-icon-label">${escapeHtml(app.shortTitle)}</span>
         </button>
       `;
     }).join('');
+  }
+
+  function setDesktopSelection(appId) {
+    state.selectedDesktopIcon = appId;
+    const icons = $('#desktop-icons').querySelectorAll('.desktop-icon');
+    for (const el of icons) {
+      el.classList.toggle('selected', el.dataset.app === appId);
+    }
+  }
+
+  let lastDesktopClickTime = 0;
+  let lastDesktopClickApp = null;
+
+  function launchDesktopApp(appId) {
+    if (!appId) return;
+    setDesktopSelection(null);
+    osContext.openApp(appId);
   }
 
   $('#desktop-icons').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-app]');
     if (!btn) return;
     e.stopPropagation();
-    state.selectedDesktopIcon = btn.dataset.app;
-    renderDesktopIcons();
+    const appId = btn.dataset.app;
+    const now = performance.now();
+    const isDouble = lastDesktopClickApp === appId && now - lastDesktopClickTime < 480;
+
+    lastDesktopClickTime = now;
+    lastDesktopClickApp = appId;
+
+    if (isDouble) {
+      lastDesktopClickTime = 0;
+      lastDesktopClickApp = null;
+      launchDesktopApp(appId);
+    } else {
+      setDesktopSelection(appId);
+    }
   });
 
   $('#desktop-icons').addEventListener('dblclick', (e) => {
     const btn = e.target.closest('[data-app]');
     if (!btn) return;
-    osContext.openApp(btn.dataset.app);
+    e.stopPropagation();
+    launchDesktopApp(btn.dataset.app);
+  });
+
+  $('#desktop-icons').addEventListener('keydown', (e) => {
+    const btn = e.target.closest('[data-app]');
+    if (!btn) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      launchDesktopApp(btn.dataset.app);
+    }
   });
 
   $('#desktop-stage').addEventListener('pointerdown', (e) => {
     if (e.target === $('#desktop-stage')) {
       closeAllFlyouts();
       if (state.selectedDesktopIcon) {
-        state.selectedDesktopIcon = null;
-        renderDesktopIcons();
+        setDesktopSelection(null);
       }
     }
   });

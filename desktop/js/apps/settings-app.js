@@ -182,8 +182,36 @@ export function mountSettingsApp(container, osContext, args = {}) {
     } else if (section === 'jarvis') {
       mainEl.innerHTML = `
         <div class="panel-card">
-          <div class="eyebrow">OPSİYONEL HARİCİ OPENAI-UYUMLU LLM KÖPRÜSÜ</div>
-          <p class="panel-sub">Yerleşik deterministik kuantum/astrofizik NLU her zaman çevrimdışı çalışır. Ek olarak açık uçlu sohbet için OpenAI/Ollama uyumlu bir uç nokta tanımlayabilirsiniz.</p>
+          <div class="eyebrow">ELEVENLABS ULTRA-GERÇEKÇİ J.A.R.V.I.S. SES MOTORU</div>
+          <p class="panel-sub">J.A.R.V.I.S.'in konuşmalarını ElevenLabs yapay zekâ ses senteziyle ultra gerçekçi bir tonda dinleyin. API anahtarınız doğrudan yerel bellekte tutulur.</p>
+          <label style="font-size:12px;">Ses Sağlayıcısı (TTS Provider)
+            <select class="select" id="st-tts-provider" style="margin-top:4px;">
+              <option value="auto">Otomatik (ElevenLabs varsa kullan, yoksa Tarayıcı)</option>
+              <option value="elevenlabs">ElevenLabs (Ultra Gerçekçi AI Ses)</option>
+              <option value="webspeech">Tarayıcı Web Speech Sentezi</option>
+              <option value="system">Yerel Linux Ana Makine (espeak/termux)</option>
+            </select>
+          </label>
+          <label style="font-size:12px;">ElevenLabs API Anahtarı
+            <input type="password" class="input" id="st-el-key" placeholder="xi-..." style="margin-top:4px;" />
+          </label>
+          <label style="font-size:12px;">Ses Modeli / Karakteri
+            <select class="select" id="st-el-voice" style="margin-top:4px;">
+              <option value="pNInz6obpgDQGcFmaJgB">Adam (Derin, Otoriter ve Kusursuz J.A.R.V.I.S. Tonu)</option>
+              <option value="ErXwobaYiN019PkySvjV">Antoni (Sakin, Bilimsel ve Dengeli)</option>
+              <option value="JBFqnCBsd6RMkjVDRZzb">George (İngiliz Aksanlı Bilge)</option>
+              <option value="onwK4e9ZLuTAKqWW03F9">Daniel (Teknolojik &amp; Taktiksel)</option>
+            </select>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button type="button" class="btn btn-primary btn-sm" id="st-el-save">Ses Ayarlarını Kaydet</button>
+            <button type="button" class="btn btn-sm" id="st-el-test">Sesi Test Et</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="margin-top:16px;">
+          <div class="eyebrow">GENEL SOHBET &amp; HARİCİ OPENAI / OLLAMA LLM KÖPRÜSÜ</div>
+          <p class="panel-sub">J.A.R.V.I.S. yerleşik zengin diyalog ve kuantum/astrofizik bilgisine sahiptir. Dilerseniz açık uçlu derin sohbetler için OpenAI veya Ollama uç noktası bağlayabilirsiniz.</p>
           <label style="font-size:12px;">API Uç Noktası (Chat Completions URL)
             <input type="url" class="input" id="st-llm-url" placeholder="https://api.openai.com/v1/chat/completions" />
           </label>
@@ -193,12 +221,29 @@ export function mountSettingsApp(container, osContext, args = {}) {
           <label style="font-size:12px;">Model Adı
             <input type="text" class="input" id="st-llm-model" />
           </label>
-          <button type="button" class="btn btn-primary btn-sm" id="st-llm-save" style="align-self:flex-start;">Kaydet</button>
+          <button type="button" class="btn btn-primary btn-sm" id="st-llm-save" style="align-self:flex-start;">LLM Yapılandırmasını Kaydet</button>
         </div>
       `;
+      mainEl.querySelector('#st-tts-provider').value = jcfg.ttsProvider || 'auto';
+      mainEl.querySelector('#st-el-key').value = jcfg.elevenLabsApiKey || '';
+      mainEl.querySelector('#st-el-voice').value = jcfg.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB';
       mainEl.querySelector('#st-llm-url').value = jcfg.llmEndpoint || '';
       mainEl.querySelector('#st-llm-key').value = jcfg.llmApiKey || '';
       mainEl.querySelector('#st-llm-model').value = jcfg.llmModel || 'gpt-4o-mini';
+
+      mainEl.querySelector('#st-el-save').addEventListener('click', () => {
+        osContext.jarvis.setConfig({
+          ttsProvider: mainEl.querySelector('#st-tts-provider').value,
+          elevenLabsApiKey: mainEl.querySelector('#st-el-key').value.trim(),
+          elevenLabsVoiceId: mainEl.querySelector('#st-el-voice').value.trim(),
+        });
+        osContext.notify?.('J.A.R.V.I.S. Sesi', 'ElevenLabs ses yapılandırması güncellendi.');
+      });
+
+      mainEl.querySelector('#st-el-test').addEventListener('click', () => {
+        osContext.jarvis.speak('Sistemler kontrol ediliyor efendim. ElevenLabs ses entegrasyonu başarıyla devreye alındı.');
+      });
+
       mainEl.querySelector('#st-llm-save').addEventListener('click', () => {
         osContext.jarvis.setConfig({
           llmEndpoint: mainEl.querySelector('#st-llm-url').value.trim(),

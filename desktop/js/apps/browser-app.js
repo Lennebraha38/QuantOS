@@ -65,9 +65,9 @@ const BUILTIN_PAGES = {
 
 export function mountBrowserApp(container) {
   let tabs = [
-    { id: 1, url: 'quantro://portal' },
-    { id: 2, url: 'quantro://sozluk' },
-    { id: 3, url: 'quantro://arxiv' },
+    { id: 1, url: 'quantro://portal', history: ['quantro://portal'], histIdx: 0 },
+    { id: 2, url: 'quantro://sozluk', history: ['quantro://sozluk'], histIdx: 0 },
+    { id: 3, url: 'https://html.duckduckgo.com/html/?q=quantum+physics', history: ['https://html.duckduckgo.com/html/?q=quantum+physics'], histIdx: 0 },
   ];
   let activeId = 1;
   let seq = 4;
@@ -75,20 +75,43 @@ export function mountBrowserApp(container) {
   container.innerHTML = `
     <div class="app-shell">
       <div class="app-tabs" id="br-tabs"></div>
-      <form class="app-toolbar" id="br-nav">
-        <button type="button" class="btn btn-sm" data-goto="quantro://portal">Portal</button>
-        <button type="button" class="btn btn-sm" data-goto="quantro://sozluk">Sözlük</button>
-        <button type="button" class="btn btn-sm" data-goto="quantro://arxiv">Literatür</button>
-        <input type="text" class="input mono" id="br-url" style="flex:1;padding:5px 10px;" />
-        <button type="submit" class="btn btn-sm btn-primary">Git</button>
-      </form>
-      <div class="app-main" id="br-view"></div>
+      <div class="app-toolbar" id="br-nav" style="display:flex;gap:6px;align-items:center;">
+        <button type="button" class="btn btn-sm" id="br-btn-back" title="Geri">◀</button>
+        <button type="button" class="btn btn-sm" id="br-btn-forward" title="İleri">▶</button>
+        <button type="button" class="btn btn-sm" id="br-btn-reload" title="Yenile">🔄</button>
+        <button type="button" class="btn btn-sm" id="br-btn-home" title="Ana Sayfa">🏠</button>
+        <form id="br-form" style="flex:1;display:flex;gap:6px;align-items:center;margin:0;">
+          <input type="text" class="input mono" id="br-url" placeholder="Web adresi girin veya arama yapın (DuckDuckGo)..." style="flex:1;padding:5px 12px;font-size:12px;" />
+          <button type="submit" class="btn btn-sm btn-primary">Git</button>
+        </form>
+      </div>
+      <div class="app-toolbar" style="padding:4px 8px;gap:6px;background:var(--hair);border-bottom:1px solid var(--hair-strong);display:flex;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:11px;color:var(--text-3);font-weight:600;margin-right:4px;">YER İMLERİ:</span>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="quantro://portal" style="font-size:11px;">🌌 Quantro</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="quantro://sozluk" style="font-size:11px;">📖 Sözlük</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="quantro://arxiv" style="font-size:11px;">📄 ArXiv</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="https://tr.wikipedia.org" style="font-size:11px;">🌐 Vikipedi</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="https://html.duckduckgo.com" style="font-size:11px;">🦆 DuckDuckGo</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="https://github.com/Lennebraha38/QuantOS" style="font-size:11px;">🐙 GitHub Repo</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-goto="https://ui.adsabs.harvard.edu" style="font-size:11px;">🔭 NASA ADS</button>
+      </div>
+      <div class="app-main" id="br-view" style="position:relative;display:flex;flex-direction:column;flex:1;padding:0;overflow:hidden;"></div>
+      <div class="app-statusbar">
+        <span id="br-status-security">🔒 Quantro Güvenli Web Proxy Aktif (SSRF Korumalı)</span>
+        <span id="br-status-url" class="mono" style="font-size:11px;"></span>
+      </div>
     </div>
   `;
 
   const tabsEl = container.querySelector('#br-tabs');
   const urlEl = container.querySelector('#br-url');
   const viewEl = container.querySelector('#br-view');
+  const backBtn = container.querySelector('#br-btn-back');
+  const forwardBtn = container.querySelector('#br-btn-forward');
+  const reloadBtn = container.querySelector('#br-btn-reload');
+  const homeBtn = container.querySelector('#br-btn-home');
+  const statusSecurity = container.querySelector('#br-status-security');
+  const statusUrl = container.querySelector('#br-status-url');
 
   const cur = () => tabs.find((t) => t.id === activeId) || tabs[0];
 
@@ -101,93 +124,141 @@ export function mountBrowserApp(container) {
       .replace(/'/g, '&#39;');
   }
 
-  function parseSafeHttpUrl(raw) {
-    const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    try {
-      const parsed = new URL(candidate);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-      return parsed;
-    } catch {
-      return null;
+  function resolveBrowserInput(input) {
+    const raw = String(input || '').trim();
+    if (!raw) return 'quantro://portal';
+    if (raw.startsWith('quantro://')) return raw;
+    if (/^https?:\/\//i.test(raw)) return raw;
+
+    // Etki alanı adayı (örn: wikipedia.org, github.com)
+    if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/.*)?$/i.test(raw)) {
+      return `https://${raw}`;
     }
+
+    // Arama sorgusu -> DuckDuckGo HTML
+    return `https://html.duckduckgo.com/html/?q=${encodeURIComponent(raw)}`;
+  }
+
+  function navigateTo(url, pushHistory = true) {
+    const t = cur();
+    const targetUrl = resolveBrowserInput(url);
+    t.url = targetUrl;
+    if (!t.history) {
+      t.history = [targetUrl];
+      t.histIdx = 0;
+    } else if (pushHistory && t.history[t.histIdx] !== targetUrl) {
+      t.history = t.history.slice(0, t.histIdx + 1);
+      t.history.push(targetUrl);
+      t.histIdx = t.history.length - 1;
+    }
+    render();
   }
 
   function render() {
     const t = cur();
+    if (!t.history) {
+      t.history = [t.url];
+      t.histIdx = 0;
+    }
+
+    backBtn.disabled = t.histIdx <= 0;
+    forwardBtn.disabled = t.histIdx >= t.history.length - 1;
+
     tabsEl.innerHTML =
       tabs
         .map((tb) => {
-          const label = BUILTIN_PAGES[tb.url]?.title || tb.url.replace(/^https?:\/\//, '').slice(0, 22);
-          return `<button type="button" class="app-tab ${tb.id === t.id ? 'active' : ''}" data-tid="${tb.id}">${escapeHtml(label)}</button>`;
+          let label = BUILTIN_PAGES[tb.url]?.title;
+          if (!label) {
+            try {
+              const u = new URL(tb.url);
+              label = u.hostname.replace(/^www\./, '');
+              if (u.pathname && u.pathname !== '/') label += u.pathname.slice(0, 12);
+            } catch {
+              label = tb.url.slice(0, 20);
+            }
+          }
+          return `
+            <div class="app-tab ${tb.id === t.id ? 'active' : ''}" data-tid="${tb.id}" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+              <span>${escapeHtml(label)}</span>
+              ${tabs.length > 1 ? `<span data-close-tid="${tb.id}" style="opacity:0.6;font-weight:bold;margin-left:4px;padding:0 2px;">×</span>` : ''}
+            </div>
+          `;
         })
         .join('') + `<button type="button" class="btn btn-sm btn-ghost" id="br-new">+ Sekme</button>`;
 
     urlEl.value = t.url;
+    statusUrl.textContent = t.url;
+
     if (BUILTIN_PAGES[t.url]) {
-      viewEl.innerHTML = BUILTIN_PAGES[t.url].html;
+      statusSecurity.textContent = '🏛️ Yerleşik QuantOS Portali';
+      viewEl.innerHTML = `<div style="padding:16px;overflow:auto;flex:1;">${BUILTIN_PAGES[t.url].html}</div>`;
     } else {
+      statusSecurity.textContent = '🔒 Quantro Güvenli Web Proxy Aktif (SSRF Korumalı)';
       viewEl.innerHTML = '';
-      const parsed = parseSafeHttpUrl(t.url);
-      const card = document.createElement('div');
-      card.className = 'panel-card';
-      card.style.flex = '1';
 
-      if (!parsed) {
-        const msg = document.createElement('div');
-        msg.style.fontSize = '13px';
-        msg.style.color = 'var(--text-2)';
-        msg.textContent = `Geçersiz veya engellenen protokol: ${t.url}. Yalnızca http://, https:// ve quantro:// adresleri desteklenir.`;
-        card.appendChild(msg);
-        viewEl.appendChild(card);
-        return;
-      }
-
-      const header = document.createElement('div');
-      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;';
-
-      const urlSpan = document.createElement('span');
-      urlSpan.className = 'mono';
-      urlSpan.style.fontSize = '12px';
-      urlSpan.textContent = `Harici Bağlantı: ${parsed.href}`;
-
-      const link = document.createElement('a');
-      link.className = 'btn btn-sm btn-primary';
-      link.href = parsed.href;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = 'Yeni Tarayıcı Sekmesinde Aç';
-
-      header.append(urlSpan, link);
-
+      const proxySrc = `/api/proxy?url=${encodeURIComponent(t.url)}`;
       const frame = document.createElement('iframe');
-      frame.src = parsed.href;
-      frame.title = 'Quantro Tarayıcı Görünümü';
-      frame.style.cssText = 'flex:1;min-height:360px;border:1px solid var(--hair-strong);border-radius:10px;background:#fff;';
-      frame.setAttribute('sandbox', 'allow-scripts allow-forms');
-      frame.setAttribute('referrerpolicy', 'no-referrer');
+      frame.src = proxySrc;
+      frame.title = 'Quantro Web Tarayıcı Görüntüsü';
+      frame.style.cssText = 'flex:1;width:100%;height:100%;border:none;background:#ffffff;';
+      frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups');
 
-      card.append(header, frame);
-      viewEl.appendChild(card);
+      viewEl.appendChild(frame);
     }
   }
 
-  container.querySelector('#br-nav').addEventListener('submit', (e) => {
+  container.querySelector('#br-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    cur().url = urlEl.value.trim() || 'quantro://portal';
+    navigateTo(urlEl.value);
+  });
+
+  backBtn.addEventListener('click', () => {
+    const t = cur();
+    if (t.histIdx > 0) {
+      t.histIdx--;
+      t.url = t.history[t.histIdx];
+      render();
+    }
+  });
+
+  forwardBtn.addEventListener('click', () => {
+    const t = cur();
+    if (t.histIdx < t.history.length - 1) {
+      t.histIdx++;
+      t.url = t.history[t.histIdx];
+      render();
+    }
+  });
+
+  reloadBtn.addEventListener('click', () => {
     render();
+  });
+
+  homeBtn.addEventListener('click', () => {
+    navigateTo('quantro://portal');
   });
 
   container.querySelectorAll('[data-goto]').forEach((b) =>
     b.addEventListener('click', () => {
-      cur().url = b.dataset.goto;
-      render();
+      navigateTo(b.dataset.goto);
     })
   );
 
   tabsEl.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-close-tid]');
+    if (closeBtn) {
+      e.stopPropagation();
+      const tid = Number(closeBtn.dataset.closeTid);
+      if (tabs.length > 1) {
+        tabs = tabs.filter((x) => x.id !== tid);
+        if (activeId === tid) activeId = tabs[0].id;
+        render();
+      }
+      return;
+    }
     if (e.target.closest('#br-new')) {
       const id = seq++;
-      tabs.push({ id, url: 'quantro://portal' });
+      tabs.push({ id, url: 'quantro://portal', history: ['quantro://portal'], histIdx: 0 });
       activeId = id;
       render();
       return;

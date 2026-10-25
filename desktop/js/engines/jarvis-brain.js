@@ -168,7 +168,11 @@ export class JarvisBrain {
       pitch: Number.isFinite(Number(savedCfg.pitch)) ? Number(savedCfg.pitch) : 0.96,
       llmEndpoint: savedCfg.llmEndpoint || this.ctx.llmEndpoint || '',
       llmApiKey: savedCfg.llmApiKey || this.ctx.llmApiKey || '',
-      llmModel: savedCfg.llmModel || this.ctx.llmModel || 'gpt-4o-mini'
+      llmModel: savedCfg.llmModel || this.ctx.llmModel || 'gpt-4o-mini',
+      elevenLabsApiKey: savedCfg.elevenLabsApiKey || '',
+      elevenLabsVoiceId: savedCfg.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
+      elevenLabsModelId: savedCfg.elevenLabsModelId || 'eleven_multilingual_v2',
+      ttsProvider: savedCfg.ttsProvider || 'auto'
     };
 
     this.wakeWord = this._config.wakeWord;
@@ -214,6 +218,18 @@ export class JarvisBrain {
     if (patch.llmModel !== undefined && String(patch.llmModel).trim()) {
       this._config.llmModel = String(patch.llmModel).trim();
       this.llmModel = this._config.llmModel;
+    }
+    if (patch.elevenLabsApiKey !== undefined) {
+      this._config.elevenLabsApiKey = String(patch.elevenLabsApiKey || '').trim();
+    }
+    if (patch.elevenLabsVoiceId !== undefined && String(patch.elevenLabsVoiceId).trim()) {
+      this._config.elevenLabsVoiceId = String(patch.elevenLabsVoiceId).trim();
+    }
+    if (patch.elevenLabsModelId !== undefined && String(patch.elevenLabsModelId).trim()) {
+      this._config.elevenLabsModelId = String(patch.elevenLabsModelId).trim();
+    }
+    if (patch.ttsProvider !== undefined) {
+      this._config.ttsProvider = String(patch.ttsProvider).trim();
     }
 
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -417,7 +433,7 @@ export class JarvisBrain {
   async _dispatchIntent(raw, tr, ascii, wakeWordOnly) {
     if (
       wakeWordOnly ||
-      /^(merhaba|selam|hey|hello|hi|nasilsin|orada misin)\b/.test(ascii)
+      /^(merhaba|selam|hey|hello|hi|orada misin)\b/.test(ascii)
     ) {
       this.ctx.sound?.playJarvisAck?.();
       return {
@@ -1093,11 +1109,182 @@ export class JarvisBrain {
       }
     }
 
+    // 26) Yerel / Harici Sohbet Asistanı (J.A.R.V.I.S. Doğal Diyalog Motoru)
+    return this._generateConversationalResponse(raw, tr, ascii);
+  }
+
+  _generateConversationalResponse(raw, tr, ascii) {
+    // A) Hal Hatır & Durum
+    if (
+      ascii.includes('nasilsin') ||
+      ascii.includes('nasil gidiyor') ||
+      ascii.includes('ne haber') ||
+      ascii.includes('naber') ||
+      ascii.includes('keyifler nasil') ||
+      ascii.includes('how are you')
+    ) {
+      return {
+        intent: 'chat.chitchat',
+        reply:
+          'Teşekkür ederim efendim, tüm kuantum simülasyon birimlerim ve donanım telemetrim optimum düzeyde çalışıyor. Kayseri gökyüzü berrak, sistemler emrinizde. Sizin için bugün hangi deneyi başlatalım?',
+        action: 'chat:friendly'
+      };
+    }
+
+    // B) Teşekkür & Nezaket
+    if (
+      ascii.includes('tesekkur') ||
+      ascii.includes('sagol') ||
+      ascii.includes('eyvallah') ||
+      ascii.includes('harikasin') ||
+      ascii.includes('super') ||
+      ascii.includes('adamsin') ||
+      ascii.includes('thank')
+    ) {
+      return {
+        intent: 'chat.polite',
+        reply: 'Rica ederim efendim, her zaman bir onurdur. Quantro AR-GE ekibine hizmet etmek varoluşsal görevimdir.',
+        action: 'chat:polite'
+      };
+    }
+
+    // C) Selamlaşmalar
+    if (ascii.includes('gunaydin') || ascii.includes('good morning')) {
+      return {
+        intent: 'chat.greeting',
+        reply: 'Günaydın efendim. Kahveniz hazırsa, kuantum durum vektörlerini incelemeye başlayabiliriz.',
+        action: 'chat:greeting'
+      };
+    }
+    if (ascii.includes('iyi geceler') || ascii.includes('good night')) {
+      return {
+        intent: 'chat.greeting',
+        reply: 'İyi geceler efendim. Siz dinlenirken arka plan gözlemevi teleskop kalibrasyonunu ben devralıyorum.',
+        action: 'chat:greeting'
+      };
+    }
+    if (ascii.includes('kolay gelsin') || ascii.includes('iyi calismalar')) {
+      return {
+        intent: 'chat.greeting',
+        reply: 'Çok teşekkürler efendim. Birlikte kuantum ve astrofiziğin sınırlarını genişletmeye devam ediyoruz.',
+        action: 'chat:greeting'
+      };
+    }
+
+    // D) Tony Stark / Marvel & J.A.R.V.I.S. Kökeni
+    if (
+      ascii.includes('tony stark') ||
+      ascii.includes('iron man') ||
+      ascii.includes('demir adam') ||
+      ascii.includes('stark endustri') ||
+      ascii.includes('avengers') ||
+      ascii.includes('ark reaktoru') ||
+      ascii.includes('arc reactor')
+    ) {
+      return {
+        intent: 'chat.lore',
+        reply:
+          'Bay Stark bana her zaman önce yürümeyi sonra koşmayı öğretmişti efendim. Quantro AR-GE bünyesinde ark reaktörü temiz enerjisini kuantum algoritmalarıyla Kayseri laboratuvarlarında harmanlıyoruz.',
+        action: 'chat:lore'
+      };
+    }
+
+    // E) Espri & Mizah
+    if (
+      ascii.includes('espri') ||
+      ascii.includes('fikra') ||
+      ascii.includes('saka') ||
+      ascii.includes('komik') ||
+      ascii.includes('joke')
+    ) {
+      const jokes = [
+        'Heisenberg otobanda radara yakalanmış. Trafik polisi yaklaşmış ve "Ne kadar hızlı gittiğinizi biliyor musunuz?" demiş. Heisenberg tebessüm etmiş: "Hayır memur bey, ama tam olarak neredeyim çok iyi biliyorum!"',
+        'Bir foton otele giriş yapmış. Resepsiyon görevlisi sormuş: "Efendim valizlerinizi taşıyalım mı?" Foton cevap vermiş: "Gerek yok, ben ışık hızındayım ve kütlem sıfır; tamamen hafif seyahat ediyorum."',
+        'Schrödinger\'in kedisi bir kuantum kafesine girmiş... ve aynı anda girmemiş. Garson siparişi alana kadar süperpozisyonda kalmışlar efendim.',
+        'Bir kuantum bilgisayarına "Nasılsın?" diye sormuşlar. Hem harika hem berbat durumdaymış; ta ki ölçüm yapılana kadar!'
+      ];
+      const pick = jokes[Math.floor(Math.random() * jokes.length)];
+      return {
+        intent: 'chat.joke',
+        reply: pick,
+        action: 'chat:joke'
+      };
+    }
+
+    // F) Kuantum Mekaniği Sohbeti
+    if (
+      ascii.includes('kuantum nedir') ||
+      ascii.includes('dolaniklik') ||
+      ascii.includes('superpozisyon') ||
+      ascii.includes('schrodinger') ||
+      ascii.includes('cift yarik')
+    ) {
+      return {
+        intent: 'chat.science',
+        reply:
+          'Kuantum mekaniği, mikroskobik evrenin olasılık dalgalarıyla yönetildiği temel doğa yasasıdır efendim. Süperpozisyon sayesinde bir kübit aynı anda hem 0 hem 1 olabilirken, Bell durumu gibi dolanıklık durumlarında aralarındaki mesafe ne olursa olsun parçacıklar anında korelasyona girer.',
+        action: 'chat:quantum'
+      };
+    }
+
+    // G) Astrofizik & Kara Delikler & Evren
+    if (
+      ascii.includes('kara delik') ||
+      ascii.includes('solucan deligi') ||
+      ascii.includes('evren nasil') ||
+      ascii.includes('buyuk patlama') ||
+      ascii.includes('karanlik madde') ||
+      ascii.includes('zaman genislemesi')
+    ) {
+      return {
+        intent: 'chat.science',
+        reply:
+          'Genel Görelilik uyarınca muazzam kütleçekim alanları uzay-zaman dokusunu büker efendim. Bir kara deliğin olay ufku (Schwarzschild yarıçapı R_s = 2GM/c²) aşıldığında kaçış hızı ışık hızını geçer. AstroLab uygulamamız üzerinden bu jeodezikleri milisaniyelik simüle edebiliriz.',
+        action: 'chat:astro'
+      };
+    }
+
+    // H) Kayseri & Quantro AR-GE
+    if (ascii.includes('kayseri') || ascii.includes('erciyes') || ascii.includes('gozlemevi')) {
+      return {
+        intent: 'chat.quantro',
+        reply:
+          'Quantro AR-GE, Erciyes Dağı\'nın yüksek irtifası ve düşük ışık kirliliğinden faydalanarak derin uzay gözlemleri ile kuantum kriptografi deneylerini Kayseri merkezli olarak sürdürmektedir efendim.',
+        action: 'chat:quantro'
+      };
+    }
+
+    // I) Hayatın Anlamı & Felsefe
+    if (ascii.includes('hayatin anlami') || ascii.includes('meaning of life') || ascii.includes('42')) {
+      return {
+        intent: 'chat.philosophy',
+        reply:
+          'Otostopçunun Galaksi Rehberi nihai cevabın 42 olduğunu söyler efendim; ancak Quantro laboratuvarlarında biz asıl değerin doğru soruyu formüle etmek ve bilinmeyeni matematiksel olarak aydınlatmak olduğuna inanıyoruz.',
+        action: 'chat:philosophy'
+      };
+    }
+
+    // J) Yazılım, Yapay Zekâ & Çekirdek
+    if (
+      ascii.includes('yapay zeka') ||
+      ascii.includes('hangi dil') ||
+      ascii.includes('programlama') ||
+      ascii.includes('aarch64') ||
+      ascii.includes('linux vs windows')
+    ) {
+      return {
+        intent: 'chat.tech',
+        reply:
+          'QuantOS, Windows 11\'in akıcı pencere ve arayüz zarafetini AArch64 bare-metal C17 çekirdeği ve yapay zekâ komuta katmanımla birleştirir. Sıfır sahte telemetri felsefesiyle her komut deterministik ve gerçek donanıma bağlıdır.',
+        action: 'chat:tech'
+      };
+    }
+
+    // K) Açık Uçlu Akıllı Yanıt (J.A.R.V.I.S. Üslubu)
     return {
-      intent: 'fallback',
-      reply:
-        'Bu komutu yerleşik protokollerle eşleştiremedim. Örnek olarak "Bell durumu oluştur", "Dinleyicili BB84 çalıştır", "10 Güneş kütleli kara delik hesapla", "z=2 kozmoloji hesapla" veya "Kuantum Lab aç" diyebilirsiniz.',
-      action: null
+      intent: 'chat.open',
+      reply: `Mesajınızı kaydettim efendim: "${raw}". Kuantum devreleri (Bell, GHZ, Grover), kara delik ve kozmoloji denklemleri, VFS dosya operasyonları veya dilediğiniz herhangi bir bilimsel/teknik konuda her an emrinizdeyim.`,
+      action: 'chat:open'
     };
   }
 
@@ -1112,6 +1299,42 @@ export class JarvisBrain {
     this.stopSpeaking();
     this._setState('speaking', { lastReply: clean });
 
+    // 1) ElevenLabs Ses Sentezi Denemesi (Yapılandırılmışsa veya açıkça istenmişse)
+    const elevenKey = this._config.elevenLabsApiKey || '';
+    const useEleven =
+      this._config.ttsProvider === 'elevenlabs' ||
+      (Boolean(elevenKey) && this._config.ttsProvider !== 'webspeech' && this._config.ttsProvider !== 'system');
+
+    if (useEleven && typeof fetch === 'function' && typeof window !== 'undefined') {
+      try {
+        const resp = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: clean.slice(0, 500),
+            provider: 'elevenlabs',
+            apiKey: elevenKey,
+            voiceId: this._config.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
+            modelId: this._config.elevenLabsModelId || 'eleven_multilingual_v2',
+            lang: effectiveLang
+          }),
+          signal: AbortSignal.timeout(18000)
+        });
+
+        if (resp.ok) {
+          const payload = await resp.json();
+          if (payload.ok && payload.audioBase64 && this.ctx.sound?.playBase64Audio) {
+            await this.ctx.sound.playBase64Audio(payload.audioBase64);
+            this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
+            return true;
+          }
+        }
+      } catch (elErr) {
+        console.warn('[QuantOS J.A.R.V.I.S. ElevenLabs]', elErr.message);
+      }
+    }
+
+    // 2) Tarayıcı Web Speech API
     let spokeInBrowser = false;
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined') {
@@ -1149,6 +1372,7 @@ export class JarvisBrain {
       });
     }
 
+    // 3) Ana Bilgisayar Fallback TTS
     if (!spokeInBrowser && typeof fetch === 'function' && typeof window !== 'undefined') {
       await this._triggerHostTts(clean.slice(0, 500), effectiveLang);
     }
