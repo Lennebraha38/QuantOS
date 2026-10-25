@@ -659,50 +659,113 @@ async function handleApiChat(req, res) {
     return;
   }
 
-  const apiKey = (typeof body?.apiKey === 'string' && body.apiKey.trim()) || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || '';
-  const endpoint = (typeof body?.endpoint === 'string' && body.endpoint.trim()) || process.env.LLM_ENDPOINT || '';
-  const model = (typeof body?.model === 'string' && body.model.trim()) || process.env.LLM_MODEL || 'gpt-4o-mini';
+  const history = Array.isArray(body?.history) ? body.history.slice(-6) : [];
+  const systemPrompt = `Sen J.A.R.V.I.S.'sin. Quantro AR-GE (Kayseri Kuantum Mekaniği ve Astrofizik Araştırma Merkezi) tarafından geliştirilen süper zeki, bilge, akıcı konuşan, kibar ve sezgisel yapay zekâ komutanısın.
+Kullanıcı seninle sesli konuşuyor. Bu nedenle Gemini Live tarzında konuşma rahatlığı sağla:
+- Yanıtların doğrudan doğal konuşma diline uygun, akıcı, sıcak ve samimi olsun.
+- Asla markdown yıldızları, tablolar, uzun listeler veya madde işaretleri kullanma; çünkü yanıtın sesli okunacak.
+- Yanıtların 1 ila 3 net, etkileyici ve akıcı cümle olsun.
+- Bilimsel sorulara (kuantum, uzay, görelilik vb.) derin ve çarpıcı cevaplar ver. Günlük sohbetlere ise esprili, nazik bir Tony Stark yardımcısı edasıyla karşılık ver.`;
 
-  if (endpoint && typeof fetch === 'function') {
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.map((h) => ({
+      role: h.role === 'assistant' ? 'assistant' : 'user',
+      content: String(h.text || h.reply || h.input || '')
+    })),
+    { role: 'user', content: message }
+  ];
+
+  // 1) Eğer kullanıcının DeepSeek veya OpenAI API anahtarı varsa resmi API'yi çağır
+  const deepseekKey = (typeof body?.apiKey === 'string' && body.apiKey.trim()) || process.env.DEEPSEEK_API_KEY || '';
+  const customEndpoint = (typeof body?.endpoint === 'string' && body.endpoint.trim()) || process.env.LLM_ENDPOINT || '';
+  const customModel = (typeof body?.model === 'string' && body.model.trim()) || process.env.LLM_MODEL || 'deepseek-chat';
+
+  if (deepseekKey || customEndpoint) {
     try {
+      const url = customEndpoint || 'https://api.deepseek.com/chat/completions';
       const headers = { 'Content-Type': 'application/json' };
-      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-      const upstream = await fetch(endpoint, {
+      if (deepseekKey) headers.Authorization = `Bearer ${deepseekKey}`;
+
+      const upstream = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Sen Quantro AR-GE (Kayseri) bünyesindeki QuantOS işletim sisteminin yapay zekâ asistanı J.A.R.V.I.S.\'sin. Tony Stark\'ın J.A.R.V.I.S. asistanı tarzında; kibar, sadık, son derece zeki, esprili, bilimsel ve yardımseversin. Türkçe ve İngilizce sorulara kusursuz cevap verirsin.'
-            },
-            ...(Array.isArray(body?.history) ? body.history : []),
-            { role: 'user', content: message }
-          ],
-          temperature: 0.6
+          model: customModel,
+          messages,
+          temperature: 0.7,
+          max_tokens: 300
         }),
-        signal: AbortSignal.timeout(20000)
+        signal: AbortSignal.timeout(15000)
       });
 
       if (upstream.ok) {
         const json = await upstream.json();
         const reply = json?.choices?.[0]?.message?.content?.trim() || json?.response || json?.reply;
         if (reply) {
-          sendJson(res, 200, { ok: true, reply, source: 'external-llm', model });
+          sendJson(res, 200, { ok: true, reply, source: 'deepseek-official', model: customModel });
           return;
         }
       }
     } catch (llmErr) {
-      console.warn('[QuantOS Chat] Harici LLM hatası:', llmErr.message);
+      console.warn('[QuantOS DeepSeek API Hatası]', llmErr.message);
     }
   }
 
-  // Yerleşik akıllı sohbet yanıtı
+  // 2) Ücretsiz Ultra Brain (Pollinations Hızlı Akıl Yürütme Motoru - Sıfır API Key Gerektirir)
+  try {
+    const pResp = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages,
+        model: 'openai',
+        jsonMode: false
+      }),
+      signal: AbortSignal.timeout(9000)
+    });
+
+    if (pResp.ok) {
+      const reply = (await pResp.text()).trim();
+      if (
+        reply &&
+        !reply.startsWith('{') &&
+        !reply.toLowerCase().includes('limit reached') &&
+        !reply.toLowerCase().includes('free limit') &&
+        reply.length > 2
+      ) {
+        sendJson(res, 200, {
+          ok: true,
+          reply,
+          source: 'deepseek-ultra-brain-free',
+          model: 'ultra-reasoning'
+        });
+        return;
+      }
+    }
+  } catch (pErr) {
+    console.warn('[QuantOS Ultra Brain Pollinations]', pErr.message);
+  }
+
+  // 3) Yerleşik Akıllı Deterministik Fallback (Gemini Live Akıcılığı)
+  const lowerMsg = message.toLowerCase();
+  let intelligentReply = 'Emrinizdeyim efendim. Kuantum durumları, astrofiziksel denklemler ve sistem operasyonları konusunda her an göreve hazırım.';
+
+  if (lowerMsg.includes('kuantum') || lowerMsg.includes('dolanık') || lowerMsg.includes('quantum')) {
+    intelligentReply = 'Kuantum dolanıklığı efendim, iki veya daha fazla parçacığın uzay-zaman boyunca mesafeden bağımsız tek bir birleşik dalga fonksiyonunu paylaşması durumudur; birindeki ölçüm anında diğerinin kuantum durumunu belirler.';
+  } else if (lowerMsg.includes('görelilik') || lowerMsg.includes('kara delik') || lowerMsg.includes('zaman')) {
+    intelligentReply = 'Genel Görelilik uyarınca kütleçekim bir çekme kuvveti değil, kütlenin uzay-zaman dokusunu bükmesidir efendim. Kütle arttıkça zaman durgun gözlemciye kıyasla daha yavaş akar.';
+  } else if (lowerMsg.includes('kimsin') || lowerMsg.includes('sen kimsin') || lowerMsg.includes('necisin')) {
+    intelligentReply = 'Ben J.A.R.V.I.S. efendim; Kayseri Quantro AR-GE laboratuvarlarında tasarlanan kuantum ve astrofizik işletim sistemi komuta asistanınızım.';
+  } else if (lowerMsg.includes('nasılsın') || lowerMsg.includes('naber') || lowerMsg.includes('ne haber')) {
+    intelligentReply = 'Teşekkür ederim efendim, tüm çekirdek telemetrim ve kuantum hesaplama birimlerim en üst seviyede çalışıyor. Sizin için hazır bekliyorum.';
+  } else if (lowerMsg.includes('merhaba') || lowerMsg.includes('selam') || lowerMsg.includes('hey')) {
+    intelligentReply = 'Merhaba efendim. QuantOS komuta merkezi emrinizde, bugün hangi görevi yürütüyoruz?';
+  }
+
   sendJson(res, 200, {
     ok: true,
-    reply: `Sorunuzu aldım efendim: "${message}". Kuantum ve astrofizik hesaplamaları, sistem operasyonları veya genel konularda her an emrinizdeyim.`,
+    reply: intelligentReply,
     source: 'quantos-jarvis-core'
   });
 }

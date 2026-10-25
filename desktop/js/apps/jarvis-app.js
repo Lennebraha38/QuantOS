@@ -179,12 +179,7 @@ export function mountJarvisApp(container, osContext, args = {}) {
       }
       if (!jarvis.listening && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-          if (sound?._ctx && sound?._analyser) {
-            try {
-              const srcNode = sound._ctx.createMediaStreamSource(stream);
-              srcNode.connect(sound._analyser);
-            } catch {}
-          }
+          sound?.attachMicrophoneStream?.(stream);
         }).catch((err) => {
           console.warn('[QuantOS Mic İzni]', err.message);
         });
@@ -229,6 +224,9 @@ export function mountJarvisApp(container, osContext, args = {}) {
       detail;
 
     currentState = state;
+    if (state !== 'listening') {
+      sound?.detachMicrophone?.();
+    }
     const labels = {
       idle: 'HAZIR',
       listening: 'DİNLİYOR 🎙️',

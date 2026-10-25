@@ -12,6 +12,9 @@ export class SoundEngine {
     this._masterGain = null;
     this._analyser = null;
     this._freqData = null;
+    this._micAnalyser = null;
+    this._micFreqData = null;
+    this._micSource = null;
     this._virtualImpulse = 0;
     this._lastImpulseTime = 0;
   }
@@ -282,10 +285,65 @@ export class SoundEngine {
     }
   }
 
+  /**
+   * Mikrofon ses akışını SADECE görsel spektrum analizörüne bağlar.
+   * DİKKAT: Hoparlöre/destination'a ASLA bağlanmaz!
+   * Böylece kullanıcı konuşurken kendi sesini hoparlörden duymaz (Sıfır Yankı / Sıfır Geri Besleme).
+   */
+  attachMicrophoneStream(stream) {
+    if (!stream) return null;
+    const ctx = this._ensureContext();
+    if (!ctx) return null;
+
+    try {
+      if (!this._micAnalyser) {
+        this._micAnalyser = ctx.createAnalyser();
+        this._micAnalyser.fftSize = 256;
+        this._micAnalyser.smoothingTimeConstant = 0.8;
+        this._micFreqData = new Uint8Array(this._micAnalyser.frequencyBinCount);
+      }
+      if (this._micSource) {
+        try { this._micSource.disconnect(); } catch {}
+      }
+      this._micSource = ctx.createMediaStreamSource(stream);
+      // SADECE analizöre bağla, ASLA ctx.destination'a bağlama!
+      this._micSource.connect(this._micAnalyser);
+      return this._micAnalyser;
+    } catch (err) {
+      console.warn('[QuantOS Mic Attach]', err.message);
+      return null;
+    }
+  }
+
+  detachMicrophone() {
+    if (this._micSource) {
+      try {
+        this._micSource.disconnect();
+      } catch {}
+      this._micSource = null;
+    }
+  }
+
   getActivityLevel() {
     if (this.muted || this.volume <= 0) return 0;
 
     const virtualLevel = this._computeDecayedImpulse();
+
+    // 1) Eğer kullanıcı mikrofonda konuşuyorsa micAnalyser'dan seviye oku (Sıfır hoparlör gürültüsü)
+    if (this._micAnalyser && this._micFreqData) {
+      try {
+        this._micAnalyser.getByteFrequencyData(this._micFreqData);
+        let micSum = 0;
+        for (let i = 0; i < this._micFreqData.length; i++) {
+          micSum += this._micFreqData[i];
+        }
+        const micAvg = micSum / (this._micFreqData.length * 255);
+        if (micAvg > 0.02) {
+          return Number(Math.min(1, Math.max(virtualLevel, micAvg * 2.5)).toFixed(4));
+        }
+      } catch {}
+    }
+
     if (!this._analyser || !this._freqData) {
       return Number(virtualLevel.toFixed(4));
     }
@@ -357,6 +415,22 @@ export class SoundEngine {
     if (this.muted || this.volume <= 0) return out;
 
     const virtualLevel = this._computeDecayedImpulse();
+
+    // Mikrofon konuşma analizi
+    if (this._micAnalyser && this._micFreqData) {
+      try {
+        this._micAnalyser.getByteFrequencyData(this._micFreqData);
+        let micHasSignal = false;
+        const step = Math.max(1, Math.floor(this._micFreqData.length / binCount));
+        for (let i = 0; i < binCount; i++) {
+          const raw = this._micFreqData[Math.min(this._micFreqData.length - 1, i * step)] / 255;
+          if (raw > 0.03) micHasSignal = true;
+          out[i] = Math.min(1, Math.max(raw, virtualLevel * (1 - i / (binCount * 1.4))));
+        }
+        if (micHasSignal) return out;
+      } catch {}
+    }
+
     if (this._analyser && this._freqData) {
       try {
         this._analyser.getByteFrequencyData(this._freqData);

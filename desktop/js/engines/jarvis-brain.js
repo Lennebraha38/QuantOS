@@ -1353,10 +1353,10 @@ export class JarvisBrain {
     }
 
     // 26) Yerel / Harici Sohbet Asistanı (J.A.R.V.I.S. Doğal Diyalog Motoru)
-    return this._generateConversationalResponse(raw, tr, ascii);
+    return await this._generateConversationalResponse(raw, tr, ascii);
   }
 
-  _generateConversationalResponse(raw, tr, ascii) {
+  async _generateConversationalResponse(raw, tr, ascii) {
     // A) Hal Hatır & Durum
     if (
       ascii.includes('nasilsin') ||
@@ -1711,7 +1711,38 @@ export class JarvisBrain {
       };
     }
 
-    // K) Açık Uçlu Akıllı Yanıt (J.A.R.V.I.S. Üslubu)
+    // K) Ultra Zeka: Canlı DeepSeek / Gemini Live Sohbet Akışı
+    if (typeof fetch === 'function' && typeof window !== 'undefined') {
+      try {
+        const cRes = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: raw,
+            apiKey: this._config.llmApiKey || '',
+            endpoint: this._config.llmEndpoint || '',
+            model: this._config.llmModel || 'deepseek-chat',
+            history: this._history.slice(-4)
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          if (cData.ok && cData.reply) {
+            return {
+              intent: 'chat.ai_ultra_brain',
+              reply: cData.reply,
+              provenance: cData.source || 'deepseek-ultra-brain',
+              action: 'chat:gemini_live'
+            };
+          }
+        }
+      } catch (chatErr) {
+        console.warn('[QuantOS Ultra Brain Chat]', chatErr.message);
+      }
+    }
+
     return {
       intent: 'chat.open',
       reply: `Mesajınızı kaydettim efendim: "${raw}". Kuantum devreleri (Bell, GHZ, Grover), kara delik ve kozmoloji denklemleri, VFS dosya operasyonları veya dilediğiniz herhangi bir bilimsel/teknik konuda her an emrinizdeyim.`,
@@ -1732,9 +1763,6 @@ export class JarvisBrain {
 
     this.stopSpeaking();
     this._setState('speaking', { lastReply: raw, speakingText: clean });
-
-    // Fütüristik J.A.R.V.I.S. Akustik Ton & Ark Reaktörü Nabzı
-    this.ctx.sound?.playJarvisSpeechCadence?.(clean);
 
     // 1) Önbelleklenmiş ses yanıtı kontrolü (Sıfır Gecikme)
     const cacheKey = `${effectiveLang}:${clean}`;
@@ -1944,7 +1972,6 @@ export class JarvisBrain {
     rec.onstart = () => {
       this.listening = true;
       this._latestHeardText = '';
-      this.ctx.sound?.playJarvisWake?.();
       this._setState('listening', { interimTranscript: 'Sizi dinliyorum efendim...' });
     };
 
@@ -2064,8 +2091,7 @@ export class JarvisBrain {
 
     this.stopListening({ triggerCommit: false });
     this._setState('processing', { detail: `İşleniyor: "${pending}"` });
-    this.ctx.sound?.playJarvisAck?.();
-    this.processCommand(pending, { speak: true });
+    return this.processCommand(pending, { speak: true });
   }
 
   stopListening({ triggerCommit = true } = {}) {
@@ -2095,9 +2121,7 @@ export class JarvisBrain {
       if (pending) {
         this._latestHeardText = '';
         this._setState('processing', { detail: `İşleniyor: "${pending}"` });
-        this.ctx.sound?.playJarvisAck?.();
-        this.processCommand(pending, { speak: true });
-        return;
+        return this.processCommand(pending, { speak: true });
       } else {
         const feedbackMsg = 'Sizi tam duyamadım efendim. Lütfen mikrofonunuzun açık olduğunu kontrol edin veya komutunuzu metin kutusuna yazın.';
         this._pushHistory({

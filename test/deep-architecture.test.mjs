@@ -184,19 +184,20 @@ test('Deep Architecture — J.A.R.V.I.S. Speech Recognition Commit, Silence Debo
   // Test 3: Closing microphone manually (stopListening with triggerCommit) commits and executes
   jarvis._latestHeardText = 'Jarvis nasılsın';
   jarvis.listening = true;
-  jarvis.stopListening({ triggerCommit: true });
+  await jarvis.stopListening({ triggerCommit: true });
   assert.equal(jarvis.listening, false);
   assert.equal(jarvis._latestHeardText, '');
-  assert.ok(ackPlayed);
+  const h1 = jarvis.getHistory();
+  assert.ok(h1[h1.length - 1].reply.length > 0);
 
   // Test 4: Silence debounce auto-commit works
-  ackPlayed = false;
   jarvis._latestHeardText = 'Jarvis saat kaç';
   jarvis.listening = true;
-  jarvis._commitHeardText('silence');
+  await jarvis._commitHeardText('silence');
   assert.equal(jarvis.listening, false);
   assert.equal(jarvis._latestHeardText, '');
-  assert.ok(ackPlayed);
+  const h2 = jarvis.getHistory();
+  assert.equal(h2[h2.length - 1].intent, 'system.datetime');
 
   // Test 5: Empty mic close gives immediate spoken feedback instead of dead silence
   jarvis._latestHeardText = '';
@@ -207,6 +208,11 @@ test('Deep Architecture — J.A.R.V.I.S. Speech Recognition Commit, Silence Debo
   const lastEntry = history[history.length - 1];
   assert.equal(lastEntry.intent, 'mic.no_input');
   assert.ok(lastEntry.reply.includes('Sizi tam duyamadım'));
+
+  // Test 6: Zero-echo microphone attachment
+  assert.equal(typeof sound.attachMicrophoneStream, 'function');
+  assert.equal(typeof sound.detachMicrophone, 'function');
+  sound.detachMicrophone();
 });
 
 test('Deep Architecture — J.A.R.V.I.S. Ultra Zeka Cognitive Capabilities', async () => {
