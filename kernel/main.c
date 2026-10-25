@@ -25,6 +25,8 @@
 #include "vmm.h"
 #include "heap.h"
 #include "traps.h"
+#include "syscall.h"
+#include "ipc.h"
 #include "elfloader.h"
 #include "limine.h"
 
@@ -428,6 +430,7 @@ void kernel_main(void)
     mouse_init(hhdm_offset);
     elfloader_init();
     proc_init();
+    ipc_init();
 
     /* Quantro Bilimsel Cekirdek Motorlari & J.A.R.V.I.S. */
     qpu_init();

@@ -179,6 +179,15 @@ export class JarvisBrain {
     this.llmEndpoint = this._config.llmEndpoint;
     this.llmApiKey = this._config.llmApiKey;
     this.llmModel = this._config.llmModel;
+
+    // Bilişsel Bellek & Otonom Araç Çalışma Alanı (Cognitive Working Memory)
+    this._workingMemory = {
+      lastTopic: null,
+      lastEntity: null,
+      lastQuery: null,
+      dialogHistory: []
+    };
+    this._phraseAudioCache = new Map();
   }
 
   getConfig() {
@@ -444,6 +453,132 @@ export class JarvisBrain {
       };
     }
 
+    // 0.1) Takip ve Bağlam Soruları (Working Memory Context Resolution)
+    if (this._workingMemory?.lastTopic === 'blackhole' && this._workingMemory?.lastEntity?.metrics) {
+      const bh = this._workingMemory.lastEntity.metrics;
+      if (ascii.includes('olay ufku') || ascii.includes('event horizon')) {
+        return {
+          intent: 'context.blackhole.horizon',
+          reply: `${bh.massSolar} Güneş kütleli kara deliğimizin Schwarzschild olay ufku yarıçapı ${bh.schwarzschildRadiusKm.toFixed(2)} km, Kerr dış olay ufku ise ${bh.kerrOuterHorizonKm.toFixed(2)} km'dir efendim.`,
+          action: 'speak',
+          data: bh
+        };
+      }
+      if (ascii.includes('yaricapi') || (ascii.includes('yaricap') && !ascii.includes('hesapla'))) {
+        return {
+          intent: 'context.blackhole.radius',
+          reply: `Daha önce incelediğimiz ${bh.massSolar} Güneş kütleli kara deliğin Schwarzschild yarıçapı R_s tam olarak ${bh.schwarzschildRadiusKm.toFixed(2)} km'dir efendim.`,
+          action: 'speak',
+          data: bh
+        };
+      }
+      if (ascii.includes('hawking') || (ascii.includes('sicaklik') && !ascii.includes('hesapla'))) {
+        return {
+          intent: 'context.blackhole.hawking',
+          reply: `Bu kara deliğin Hawking ışıma sıcaklığı ${bh.hawkingTemperatureK.toExponential(3)} Kelvin olup buharlaşma süresi yaklaşık ${bh.evaporationTimeYears.toExponential(2)} yıldır efendim.`,
+          action: 'speak',
+          data: bh
+        };
+      }
+      if (ascii.includes('foton kuresi') || ascii.includes('photon sphere')) {
+        return {
+          intent: 'context.blackhole.photon',
+          reply: `Foton küresi yarıçapı 1.5 R_s yani ${bh.photonSphereKm.toFixed(2)} km mesafededir; fotonlar bu yarıçapta kararsız dairesel yörüngelere girer.`,
+          action: 'speak',
+          data: bh
+        };
+      }
+    }
+
+    // 0.2) Otonom Ajan Aracı: Canlı İnternet / Google Araması (Tool: search_web)
+    if (
+      (ascii.includes('google') || ascii.includes('internette ara') || ascii.includes('webde ara')) &&
+      !ascii.includes('ayarlar')
+    ) {
+      let q = raw
+        .replace(/^(?:jarvis\s+)?(?:lutfen\s+)?(?:bana\s+)?(?:google(?:'da)?|internette?|web(?:'te)?)\s*(?:arama\s+yap|ara|arastir)?/i, '')
+        .replace(/(?:hakkinda|ile ilgili)?\s*(?:arama yap|ara|bilgi ver|nedir|arastir)\b.*$/i, '')
+        .trim();
+      if (!q && this._workingMemory?.lastQuery) {
+        q = this._workingMemory.lastQuery;
+      }
+      if (q) {
+        this._workingMemory.lastTopic = 'search';
+        this._workingMemory.lastQuery = q;
+        let searchSummary = '';
+        let searchResults = [];
+        try {
+          if (typeof fetch === 'function') {
+            const sRes = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+              signal: AbortSignal.timeout(6000)
+            });
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              searchResults = sData.results || [];
+              if (searchResults.length > 0) {
+                const topTitles = searchResults.slice(0, 2).map((r) => `"${r.title}"`).join(' ve ');
+                searchSummary = ` Arama sonuçlarında öne çıkan başlıklar: ${topTitles}.`;
+              }
+            }
+          }
+        } catch {
+          // sessiz fallback
+        }
+
+        const appEntry = APP_CATALOG.find((a) => a.id === 'browser');
+        this._openApp(appEntry, { query: q });
+
+        return {
+          intent: 'tool.search_web',
+          reply: `"${q}" için internet araştırması gerçekleştirildi ve Quantro Edge tarayıcısında açıldı efendim.${searchSummary}`,
+          action: 'openApp:browser',
+          data: { query: q, results: searchResults }
+        };
+      }
+    }
+
+    // 0.3) Otonom Ajan Aracı: Gerçek Bash Terminal Yürütme (Tool: terminal_exec)
+    if (
+      ascii.startsWith('terminalde') ||
+      ascii.startsWith('bash') ||
+      (ascii.includes('terminalde') && (ascii.includes('calistir') || ascii.includes('bak') || ascii.includes('goster')))
+    ) {
+      const cmdRaw = raw
+        .replace(/^(?:jarvis\s+)?(?:lutfen\s+)?(?:terminalde\s+)?(?:bash\s+)?(?:calistir|yurut)?\s*/i, '')
+        .replace(/\s+(?:calistir|yurut|bak|goster)\s*$/i, '')
+        .trim();
+      if (cmdRaw) {
+        let execOut = '';
+        try {
+          if (typeof fetch === 'function') {
+            const tRes = await fetch('/api/terminal/exec', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ command: cmdRaw }),
+              signal: AbortSignal.timeout(8000)
+            });
+            if (tRes.ok) {
+              const tData = await tRes.json();
+              execOut = (tData.stdout || tData.stderr || '').trim().slice(0, 180);
+            }
+          }
+        } catch {
+          execOut = '';
+        }
+
+        const appEntry = APP_CATALOG.find((a) => a.id === 'terminal');
+        this._openApp(appEntry);
+
+        const outText = execOut ? ` Çıktı: ${execOut}` : '';
+        return {
+          intent: 'tool.terminal_exec',
+          reply: `"${cmdRaw}" komutu gerçek sistem Bash kabuğunda yürütüldü efendim.${outText}`,
+          action: 'openApp:terminal',
+          data: { command: cmdRaw, output: execOut }
+        };
+      }
+    }
+
     // 1) BB84 QKD Simülasyonu
     if (ascii.includes('bb84') || ascii.includes('kuantum anahtar dagitim') || ascii.includes('qkd')) {
       const hasEve =
@@ -628,6 +763,8 @@ export class JarvisBrain {
       }
 
       const bh = blackHoleMetrics(massSolar, spin);
+      this._workingMemory.lastTopic = 'blackhole';
+      this._workingMemory.lastEntity = { type: 'blackhole', mass: bh.massSolar, spin: bh.spin, metrics: bh };
       const appEntry = APP_CATALOG.find((a) => a.id === 'astrolab');
       this._openApp(appEntry, { tab: 'blackhole', metrics: bh });
 
@@ -1299,6 +1436,14 @@ export class JarvisBrain {
     this.stopSpeaking();
     this._setState('speaking', { lastReply: clean });
 
+    // Önbelleklenmiş ses yanıtı kontrolü (Sıfır Gecikme)
+    const cacheKey = `${effectiveLang}:${clean}`;
+    if (this._phraseAudioCache?.has(cacheKey) && this.ctx.sound?.playBase64Audio) {
+      await this.ctx.sound.playBase64Audio(this._phraseAudioCache.get(cacheKey));
+      this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
+      return true;
+    }
+
     // 1) ElevenLabs Ses Sentezi Denemesi (Yapılandırılmışsa veya açıkça istenmişse)
     const elevenKey = this._config.elevenLabsApiKey || '';
     const useEleven =
@@ -1324,6 +1469,7 @@ export class JarvisBrain {
         if (resp.ok) {
           const payload = await resp.json();
           if (payload.ok && payload.audioBase64 && this.ctx.sound?.playBase64Audio) {
+            this._phraseAudioCache?.set(cacheKey, payload.audioBase64);
             await this.ctx.sound.playBase64Audio(payload.audioBase64);
             this._setState(this.listening ? 'listening' : 'idle', { lastReply: clean });
             return true;

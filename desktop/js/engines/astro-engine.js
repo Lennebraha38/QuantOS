@@ -128,6 +128,52 @@ export function blackHoleMetrics(massSolar = 10, spin = 0) {
   };
 }
 
+/**
+ * Kütleçekimsel Merceklenme (Gravitational Lensing):
+ * Einstein halkası açısal yarıçapı, ışık sapma açısı ve mercek büyütmesi.
+ */
+export function gravitationalLensing({
+  massSolar = 1e11,
+  dLensMpc = 1000,
+  dSourceMpc = 2000,
+  impactParamRg = 10
+} = {}) {
+  const { G, c, M_sun, pc } = ASTRO_CONSTANTS;
+  const M = Math.max(1, Number(massSolar) || 1e11) * M_sun;
+  const DL_m = Math.max(0.1, Number(dLensMpc) || 1000) * 1e6 * pc;
+  const DS_m = Math.max(DL_m * 1.01, Number(dSourceMpc) || 2000) * 1e6 * pc;
+  const DLS_m = DS_m - DL_m;
+
+  const rg = (G * M) / (c * c);
+  const thetaE_rad = Math.sqrt((4 * rg * DLS_m) / (DL_m * DS_m));
+  const arcsecPerRad = (180 * 3600) / Math.PI;
+  const thetaE_arcsec = thetaE_rad * arcsecPerRad;
+
+  const b_m = Math.max(3 * rg, Number(impactParamRg) * rg);
+  const deflectionRad = (4 * rg) / b_m;
+  const deflectionArcsec = deflectionRad * arcsecPerRad;
+
+  const u = 0.5;
+  const magPlus = (u * u + 2) / (2 * u * Math.sqrt(u * u + 4)) + 0.5;
+  const magMinus = (u * u + 2) / (2 * u * Math.sqrt(u * u + 4)) - 0.5;
+  const totalMag = magPlus + Math.abs(magMinus);
+
+  return {
+    massSolar: Number(massSolar) || 1e11,
+    thetaE_rad,
+    thetaE_arcsec,
+    deflectionRad,
+    deflectionArcsec,
+    einsteinRadiusPhysicalKpc: (thetaE_rad * DL_m) / (1e3 * pc),
+    magnification: {
+      u,
+      plus: magPlus,
+      minus: magMinus,
+      total: totalMag
+    }
+  };
+}
+
 export class NBodySystem {
   constructor(bodiesOrConfig = [], G_sim = 1.0, options = {}) {
     let rawBodies = [];
@@ -459,6 +505,76 @@ export class NBodySystem {
       bodies[0].vx = -px / centralMass;
       bodies[0].vy = -py / centralMass;
       return new NBodySystem(bodies, G, { softening: 0.025 });
+    },
+
+    trappist1() {
+      const G = 1.0;
+      const mStar = 1.0;
+      const planets = [
+        { name: 'TRAPPIST-1', mass: mStar, x: 0, y: 0, vx: 0, vy: 0, color: '#ef4444', radius: 8 },
+        { name: 'b', mass: 1.02e-5, r: 0.35, color: '#38bdf8', radius: 2.8 },
+        { name: 'c', mass: 1.16e-5, r: 0.48, color: '#a78bfa', radius: 2.9 },
+        { name: 'd', mass: 0.30e-5, r: 0.65, color: '#34d399', radius: 2.3 },
+        { name: 'e', mass: 0.77e-5, r: 0.85, color: '#fbbf24', radius: 2.7 },
+        { name: 'f', mass: 0.93e-5, r: 1.10, color: '#f97316', radius: 2.8 },
+        { name: 'g', mass: 1.15e-5, r: 1.40, color: '#ec4899', radius: 2.9 },
+        { name: 'h', mass: 0.33e-5, r: 1.80, color: '#94a3b8', radius: 2.4 }
+      ];
+      const bodies = [planets[0]];
+      let px = 0, py = 0;
+      for (let i = 1; i < planets.length; i++) {
+        const p = planets[i];
+        const v = Math.sqrt((G * mStar) / p.r);
+        bodies.push({
+          name: `TRAPPIST-1${p.name}`,
+          mass: p.mass,
+          x: p.r,
+          y: 0,
+          vx: 0,
+          vy: v,
+          color: p.color,
+          radius: p.radius
+        });
+        py += p.mass * v;
+      }
+      bodies[0].vy = -py / mStar;
+      return new NBodySystem(bodies, G, { softening: 0.001 });
+    },
+
+    lagrangeTrojan() {
+      const G = 1.0;
+      const mSun = 1.0;
+      const mJup = 0.04;
+      const rJup = 2.0;
+      const vJup = Math.sqrt((G * (mSun + mJup)) / rJup);
+      const cos60 = 0.5;
+      const sin60 = Math.sqrt(3) / 2;
+
+      const bodies = [
+        { name: 'Güneş', mass: mSun, x: 0, y: 0, vx: 0, vy: -(mJup / (mSun + mJup)) * vJup, color: '#f59e0b', radius: 8 },
+        { name: 'Jüpiter', mass: mJup, x: rJup, y: 0, vx: 0, vy: (mSun / (mSun + mJup)) * vJup, color: '#d97736', radius: 5.5 },
+        {
+          name: 'Truvalı (L4)',
+          mass: 1e-6,
+          x: rJup * cos60,
+          y: rJup * sin60,
+          vx: -vJup * sin60,
+          vy: vJup * cos60,
+          color: '#38bdf8',
+          radius: 3
+        },
+        {
+          name: 'Truvalı (L5)',
+          mass: 1e-6,
+          x: rJup * cos60,
+          y: -rJup * sin60,
+          vx: vJup * sin60,
+          vy: vJup * cos60,
+          color: '#34d399',
+          radius: 3
+        }
+      ];
+      return new NBodySystem(bodies, G, { softening: 0.002 });
     }
   });
 }

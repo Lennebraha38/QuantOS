@@ -1,4 +1,5 @@
 #include "traps.h"
+#include "syscall.h"
 #include "uart.h"
 #include "kernel.h"
 #include "proc.h"
@@ -14,6 +15,7 @@ void traps_init(void)
 
     uart_printf("[arch:aarch64] VBAR_EL1 Exception Vector Tablosu yuklendi: 0x%llx\r\n",
                 (unsigned long long)vbar);
+    syscall_init();
 }
 
 void handle_sync_exception(trap_frame_t *tf)
@@ -23,6 +25,12 @@ void handle_sync_exception(trap_frame_t *tf)
     __asm__ volatile("mrs %0, far_el1" : "=r"(far));
 
     uint64_t ec = (esr >> 26) & 0x3F;
+
+    /* AArch64 Supervisor Call: svc #0 (EC = 0x15) */
+    if (ec == 0x15) {
+        handle_syscall(tf);
+        return;
+    }
 
     uart_printf("\r\n[KERNEL TRAP] Senkron Hata (Synchronous Exception)!\r\n");
     uart_printf("  EC=0x%llx, ESR=0x%llx, FAR=0x%llx, PC=0x%llx, SPSR=0x%llx\r\n",

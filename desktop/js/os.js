@@ -549,8 +549,40 @@ async function bootstrapQuantOS() {
   });
 
   // Global Search Palette (Ctrl+K)
+  function tryEvalMath(expr) {
+    const clean = expr.trim().toLowerCase();
+    if (!clean || clean.length < 2) return null;
+    if (!/^[0-9+\-*/().,\s^e|pi|tau|sqrt|sin|cos|tan|log|abs|c|g|hbar|m_sun]+$/i.test(clean)) return null;
+    if (!/[0-9]/.test(clean)) return null;
+    try {
+      let replaced = clean
+        .replace(/\^/g, '**')
+        .replace(/\bpi\b/g, String(Math.PI))
+        .replace(/\btau\b/g, String(Math.PI * 2))
+        .replace(/\be\b/g, String(Math.E))
+        .replace(/\bc\b/g, '299792458')
+        .replace(/\bg\b/g, '6.6743e-11')
+        .replace(/\bm_sun\b/g, '1.98847e30')
+        .replace(/\bsqrt\(/g, 'Math.sqrt(')
+        .replace(/\bsin\(/g, 'Math.sin(')
+        .replace(/\bcos\(/g, 'Math.cos(')
+        .replace(/\btan\(/g, 'Math.tan(')
+        .replace(/\blog\(/g, 'Math.log10(')
+        .replace(/\babs\(/g, 'Math.abs(');
+
+      if (/^[0-9+\-*/().\s*Math\.sqrt|sin|cos|tan|log10|abs]+$/.test(replaced)) {
+        const fn = new Function(`"use strict"; return (${replaced});`);
+        const val = fn();
+        if (typeof val === 'number' && Number.isFinite(val)) return val;
+      }
+    } catch {}
+    return null;
+  }
+
   function renderGlobalSearch(query = '') {
     const q = query.trim().toLocaleLowerCase('tr-TR');
+    const mathVal = q ? tryEvalMath(query) : null;
+
     const appMatches = APP_REGISTRY.filter(
       (a) => !q || a.title.toLocaleLowerCase('tr-TR').includes(q) || a.id.includes(q)
     ).slice(0, 6);
@@ -561,7 +593,14 @@ async function bootstrapQuantOS() {
           .slice(0, 5)
       : [];
 
-    const rows = [
+    const rows = [];
+    if (mathVal !== null) {
+      rows.push(
+        `<button type="button" class="search-result-row" data-sr-calc="${mathVal}"><span style="display:flex;align-items:center;gap:10px;"><span style="color:var(--accent)">🧮</span><span><strong>${escapeHtml(query)} = ${mathVal.toLocaleString('tr-TR', { maximumFractionDigits: 6 })}</strong></span></span><span class="badge badge-accent">Hesap Makinesi</span></button>`
+      );
+    }
+
+    rows.push(
       ...appMatches.map(
         (a) =>
           `<button type="button" class="search-result-row" data-sr-app="${a.id}"><span style="display:flex;align-items:center;gap:10px;"><span style="color:var(--accent)">${getAppIcon(a.id)}</span><span>${a.title}</span></span><span class="badge">Uygulama</span></button>`
@@ -569,10 +608,12 @@ async function bootstrapQuantOS() {
       ...fileMatches.map(
         (f) =>
           `<button type="button" class="search-result-row" data-sr-file="${escapeHtml(f.path)}"><span style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHtml(f.name)}</span></span><span class="badge mono">${escapeHtml(f.path)}</span></button>`
-      ),
-    ];
+      )
+    );
+
     if (q) {
       rows.push(
+        `<button type="button" class="search-result-row" data-sr-web="${escapeHtml(query)}"><span style="display:flex;align-items:center;gap:10px;"><span>🌐</span><span>Google'da Ara: "<strong>${escapeHtml(query)}</strong>"</span></span><span class="badge">Web Tarayıcısı</span></button>`,
         `<button type="button" class="search-result-row" data-sr-jarvis="${escapeHtml(query)}"><span>J.A.R.V.I.S.'e Sor: "${escapeHtml(query)}"</span><span class="badge badge-accent">Sesli AI</span></button>`
       );
     }
@@ -589,6 +630,18 @@ async function bootstrapQuantOS() {
 
   $('#global-search-input').addEventListener('input', (e) => renderGlobalSearch(e.target.value));
   $('#global-search-results').addEventListener('click', async (e) => {
+    const calcRow = e.target.closest('[data-sr-calc]');
+    if (calcRow) {
+      closeAllFlyouts();
+      osContext.openApp('calculator');
+      return;
+    }
+    const webRow = e.target.closest('[data-sr-web]');
+    if (webRow) {
+      closeAllFlyouts();
+      osContext.openApp('browser', { query: webRow.dataset.srWeb });
+      return;
+    }
     const appRow = e.target.closest('[data-sr-app]');
     if (appRow) {
       osContext.openApp(appRow.dataset.srApp);
@@ -973,8 +1026,76 @@ async function bootstrapQuantOS() {
     }
   });
 
+  // Windows 11 Alt+Tab 3D Acrylic Task Switcher
+  let altTabActive = false;
+  let altTabWins = [];
+  let altTabIdx = 0;
+
+  function renderAltTabSwitcher() {
+    const cont = $('#alt-tab-container');
+    if (!cont) return;
+    cont.innerHTML = altTabWins.map((w, idx) => `
+      <div class="alt-tab-card ${idx === altTabIdx ? 'active' : ''}" data-at-idx="${idx}">
+        <div class="alt-tab-card-icon">${getAppIcon(w.appId, 32)}</div>
+        <div class="alt-tab-card-title">${escapeHtml(w.title)}</div>
+      </div>
+    `).join('');
+  }
+
+  function commitAltTab() {
+    if (!altTabActive) return;
+    altTabActive = false;
+    $('#alt-tab-switcher').hidden = true;
+    const target = altTabWins[altTabIdx];
+    if (target) {
+      if (target.minimized) wm.restoreWindow(target.id);
+      wm.focusWindow(target.id);
+    }
+  }
+
+  $('#alt-tab-switcher').addEventListener('click', (e) => {
+    const card = e.target.closest('[data-at-idx]');
+    if (card) {
+      altTabIdx = Number(card.dataset.atIdx);
+      commitAltTab();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (altTabActive && (e.key === 'Alt' || !e.altKey)) {
+      commitAltTab();
+    }
+  });
+
   // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
+    if (e.altKey && e.key === 'Tab') {
+      e.preventDefault();
+      const all = wm.getAllWindows ? wm.getAllWindows() : [];
+      if (!all || all.length === 0) return;
+      if (!altTabActive) {
+        altTabActive = true;
+        altTabWins = all;
+        altTabIdx = all.length > 1 ? 1 : 0;
+        $('#alt-tab-switcher').hidden = false;
+        renderAltTabSwitcher();
+      } else {
+        if (e.shiftKey) {
+          altTabIdx = (altTabIdx - 1 + altTabWins.length) % altTabWins.length;
+        } else {
+          altTabIdx = (altTabIdx + 1) % altTabWins.length;
+        }
+        renderAltTabSwitcher();
+      }
+      return;
+    }
+
+    if (altTabActive && e.key === 'Escape') {
+      altTabActive = false;
+      $('#alt-tab-switcher').hidden = true;
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       toggleFlyout('#search-palette', () => {

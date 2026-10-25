@@ -162,6 +162,8 @@ export function mountAstroLabApp(container, osContext, args = {}) {
             <option value="binaryPulsar">Çift Nötron Yıldızı / Pulsar</option>
             <option value="figureEight">8-Figürü Üç Cisim Çözümü</option>
             <option value="keplerianDisk">Kepler Kütle Diski</option>
+            <option value="trappist1">TRAPPIST-1 Yedi Ötegezegen Rezonansı</option>
+            <option value="lagrangeTrojan">Jüpiter &amp; L4/L5 Truvalı Lagrange Noktaları</option>
           </select>
           <button type="button" class="btn btn-sm btn-primary" id="nb-toggle">${nbodyRunning ? 'Duraklat' : 'Devam Et'}</button>
           <button type="button" class="btn btn-sm" id="nb-reset">Sıfırla</button>

@@ -256,7 +256,7 @@ export class QuantumCircuit {
     }
 
     const singleGates = new Set(['h', 'x', 'y', 'z', 's', 'sdg', 't', 'tdg', 'id', 'rx', 'ry', 'rz']);
-    const twoGates = new Set(['cx', 'cnot', 'cz', 'swap']);
+    const twoGates = new Set(['cx', 'cnot', 'cz', 'swap', 'crz']);
     const threeGates = new Set(['ccx', 'toffoli']);
 
     if (singleGates.has(name)) {
@@ -359,6 +359,10 @@ export class QuantumCircuit {
 
   cz(control, target) {
     return this.addGate({ gate: 'cz', targets: [control, target] });
+  }
+
+  crz(control, target, theta) {
+    return this.addGate({ gate: 'crz', targets: [control, target], params: [theta] });
   }
 
   swap(q1, q2) {
@@ -532,6 +536,25 @@ export class QuantumCircuit {
         return;
       }
 
+      case 'crz': {
+        const cBit = 1 << targets[0];
+        const tBit = 1 << targets[1];
+        const theta = Number(params[0]) || 0;
+        const half = theta / 2;
+        const eMinus = Complex.fromPolar(1, -half);
+        const ePlus = Complex.fromPolar(1, half);
+        for (let i = 0; i < dim; i++) {
+          if ((i & cBit) !== 0) {
+            if ((i & tBit) === 0) {
+              state[i] = state[i].mul(eMinus);
+            } else {
+              state[i] = state[i].mul(ePlus);
+            }
+          }
+        }
+        return;
+      }
+
       case 'swap': {
         const q1 = targets[0];
         const q2 = targets[1];
@@ -595,6 +618,126 @@ export class QuantumCircuit {
 
     this._dirty = false;
     return this;
+  }
+
+  /**
+   * Tam 2^n x 2^n Yoğunluk Matrisi (Density Matrix):
+   * rho = |psi><psi|
+   */
+  densityMatrix() {
+    this._ensureExecuted();
+    const dim = this.dim;
+    const rho = Array.from({ length: dim }, () => new Array(dim));
+    for (let i = 0; i < dim; i++) {
+      for (let j = 0; j < dim; j++) {
+        // rho_ij = state[i] * conj(state[j])
+        const a = this.state[i];
+        const b = this.state[j];
+        rho[i][j] = new Complex(
+          cleanZero(a.re * b.re + a.im * b.im),
+          cleanZero(a.im * b.re - a.re * b.im)
+        );
+      }
+    }
+    return rho;
+  }
+
+  /**
+   * Kuantum Gürültü ve Dekolerans Modeli:
+   * Depolarizasyon kanalı, Genlik sönümlemesi (T1) ve Faz sönümlemesi (T2 dephasing) uygular.
+   * Dönen nesne: { rho, purity, entropy, isPure }
+   */
+  simulateNoise({ depolarizing = 0, amplitudeDamping = 0, phaseDamping = 0 } = {}) {
+    this._ensureExecuted();
+    const dim = this.dim;
+    const baseRho = this.densityMatrix();
+
+    // Derin kopya matris
+    const rho = baseRho.map((row) => row.map((c) => new Complex(c.re, c.im)));
+
+    // 1) Faz Sönümlemesi (Phase Damping / T2 Dephasing)
+    // Köşegen dışı elemanları (off-diagonal coherence) (1 - lambda) ile sönümler
+    const lambda = Math.max(0, Math.min(1, Number(phaseDamping) || 0));
+    if (lambda > 0) {
+      for (let i = 0; i < dim; i++) {
+        for (let j = 0; j < dim; j++) {
+          if (i !== j) {
+            rho[i][j] = rho[i][j].scale(1 - lambda);
+          }
+        }
+      }
+    }
+
+    // 2) Genlik Sönümlemesi (Amplitude Damping / T1 Relaxation)
+    // Uyarılmış durum enerjisini temel duruma (|1> -> |0>) aktarır
+    const gamma = Math.max(0, Math.min(1, Number(amplitudeDamping) || 0));
+    if (gamma > 0 && this.numQubits >= 1) {
+      for (let q = 0; q < this.numQubits; q++) {
+        const bit = 1 << q;
+        for (let i = 0; i < dim; i++) {
+          if ((i & bit) !== 0) {
+            const j = i ^ bit; // uyarılmıştan taban duruma
+            const decay = rho[i][i].re * gamma;
+            rho[j][j] = new Complex(rho[j][j].re + decay, 0);
+            rho[i][i] = new Complex(Math.max(0, rho[i][i].re - decay), 0);
+          }
+        }
+      }
+    }
+
+    // 3) Depolarizasyon Kanalı: rho -> (1 - p)*rho + (p / dim)*I
+    const p = Math.max(0, Math.min(1, Number(depolarizing) || 0));
+    if (p > 0) {
+      const mixedIdentity = p / dim;
+      for (let i = 0; i < dim; i++) {
+        for (let j = 0; j < dim; j++) {
+          const scaled = rho[i][j].scale(1 - p);
+          if (i === j) {
+            rho[i][j] = new Complex(scaled.re + mixedIdentity, 0);
+          } else {
+            rho[i][j] = scaled;
+          }
+        }
+      }
+    }
+
+    // İzi birimleştir
+    let tr = 0;
+    for (let i = 0; i < dim; i++) tr += rho[i][i].re;
+    if (tr > 0 && Math.abs(tr - 1) > 1e-12) {
+      for (let i = 0; i < dim; i++) {
+        for (let j = 0; j < dim; j++) {
+          rho[i][j] = rho[i][j].scale(1 / tr);
+        }
+      }
+    }
+
+    // Saflık (Purity): gamma = Tr(rho^2)
+    let purity = 0;
+    for (let i = 0; i < dim; i++) {
+      for (let j = 0; j < dim; j++) {
+        purity += rho[i][j].abs2();
+      }
+    }
+    purity = Math.max(1 / dim, Math.min(1, purity));
+
+    // Yaklaşık Von Neumann Entropisi: S = -Tr(rho log2 rho)
+    // Köşegen olasılık dağılımı yaklaşımı
+    let entropy = 0;
+    for (let i = 0; i < dim; i++) {
+      const p_i = rho[i][i].re;
+      if (p_i > 1e-12) {
+        entropy -= p_i * Math.log2(p_i);
+      }
+    }
+    entropy = Math.max(0, entropy);
+
+    return {
+      rho,
+      purity: cleanZero(purity),
+      entropy: cleanZero(entropy),
+      isPure: purity >= 0.999
+    };
   }
 
   _ensureExecuted() {
@@ -936,5 +1079,53 @@ export const QuantumPresets = Object.freeze({
       .rz(1, Math.PI / 3)
       .h(1)
       .run();
+  },
+
+  /**
+   * 3-Kübitlik Kuantum Fourier Dönüşümü (QFT):
+   * Klasik DFT'nin O(n 2^n) yerine O(n^2) kapıyla kuantum süperpozisyonunda icrası.
+   */
+  qft(n = 3) {
+    const count = Math.max(2, Math.min(4, Math.floor(Number(n) || 3)));
+    const circuit = new QuantumCircuit(count);
+    // QFT adımları
+    for (let target = 0; target < count; target++) {
+      circuit.h(target);
+      for (let control = target + 1; control < count; control++) {
+        const k = control - target + 1;
+        const angle = (2 * Math.PI) / Math.pow(2, k);
+        circuit.crz(control, target, angle);
+      }
+    }
+    // SWAP kapılarıyla bit sırası tersine çevrimi
+    for (let i = 0; i < Math.floor(count / 2); i++) {
+      circuit.swap(i, count - 1 - i);
+    }
+    return circuit.run();
+  },
+
+  /**
+   * Deutsch-Jozsa Algoritması:
+   * Tek bir kuantum sorgusu ile fonksiyonun sabit (constant) mi yoksa dengeli (balanced) mi olduğunu belirler.
+   */
+  deutschJozsa(isBalanced = true) {
+    const circuit = new QuantumCircuit(3)
+      // Giriş kübitleri |00> -> |++>
+      .h(0)
+      .h(1)
+      // Yardımcı kübit |1> -> |->
+      .x(2)
+      .h(2);
+
+    if (isBalanced) {
+      // Dengeli orakıl: f(x) = x0 XOR x1
+      circuit.cx(0, 2);
+      circuit.cx(1, 2);
+    }
+    // Sabit orakıl f(x)=0 için orakıl hiçbir şey yapmaz (Id)
+
+    // Giriş kübitlerine son Hadamard dönüşümü
+    circuit.h(0).h(1);
+    return circuit.run();
   }
 });

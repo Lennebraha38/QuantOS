@@ -63,7 +63,7 @@ const BUILTIN_PAGES = {
   },
 };
 
-export function mountBrowserApp(container) {
+export function mountBrowserApp(container, osContext = {}, args = {}) {
   let searchCfg = {
     provider: 'auto',
     googleApiKey: '',
@@ -84,6 +84,7 @@ export function mountBrowserApp(container) {
   let activeId = 1;
   let seq = 4;
   let showSettings = false;
+  let readerMode = false;
 
   container.innerHTML = `
     <div class="app-shell">
@@ -97,6 +98,8 @@ export function mountBrowserApp(container) {
           <input type="text" class="input mono" id="br-url" placeholder="Google'da arayın veya web adresi girin (örn: wikipedia.org)..." style="flex:1;padding:5px 12px;font-size:12px;" />
           <button type="submit" class="btn btn-sm btn-primary">Git</button>
         </form>
+        <button type="button" class="btn btn-sm" id="br-btn-reader" title="Okuma Modu (Temiz Metin)">📖</button>
+        <button type="button" class="btn btn-sm" id="br-btn-download" title="VFS'ye İndir">📥</button>
         <button type="button" class="btn btn-sm" id="br-btn-cfg" title="Arama &amp; API Ayarları">⚙️ API</button>
       </div>
       <div class="app-toolbar" style="padding:4px 8px;gap:6px;background:var(--hair);border-bottom:1px solid var(--hair-strong);display:flex;flex-wrap:wrap;align-items:center;">
@@ -487,6 +490,43 @@ export function mountBrowserApp(container) {
     }
   });
 
+  container.querySelector('#br-btn-reader')?.addEventListener('click', () => {
+    readerMode = !readerMode;
+    const bodyEl = container.querySelector('#br-body');
+    if (bodyEl) {
+      bodyEl.classList.toggle('reader-mode', readerMode);
+      if (readerMode) {
+        bodyEl.style.cssText = 'max-width:760px;margin:0 auto;padding:32px 24px;font-family:var(--font-serif);line-height:1.8;font-size:16px;background:var(--vellum-surface);color:var(--vellum-ink);overflow-y:auto;';
+      } else {
+        bodyEl.style.cssText = '';
+      }
+    }
+  });
+
+  container.querySelector('#br-btn-download')?.addEventListener('click', () => {
+    const t = curTab();
+    const content = container.querySelector('#br-body')?.innerHTML || '';
+    const fname = `C:/Users/Quantro/Downloads/Web-${Date.now().toString().slice(-4)}.html`;
+    if (osContext.vfs?.write) {
+      osContext.vfs.write(fname, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(t.url)}</title></head><body>${content}</body></html>`);
+      osContext.notify?.('İndirme Yöneticisi', `${fname} VFS Downloads klasörüne kaydedildi.`);
+    }
+  });
+
+  if (args?.query) {
+    doSearch(args.query);
+  } else if (args?.url) {
+    navigateTo(args.url);
+  }
+
   render();
-  return {};
+  return {
+    onArgs(nextArgs) {
+      if (nextArgs?.query) {
+        doSearch(nextArgs.query);
+      } else if (nextArgs?.url) {
+        navigateTo(nextArgs.url);
+      }
+    }
+  };
 }

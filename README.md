@@ -13,7 +13,8 @@
 
 ### 1. Tam Windows 11 Masaüstü Deneyimi (DWM & Kabuk)
 - **Önyükleme -> Kilit Ekranı -> Oturum Açma Akışı**: UEFI/Limine önyükleme ekranı, canlı astronomik/kuantum durum özetli Windows 11 Kilit Ekranı ve araştırmacı giriş ekranı.
-- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **çift tıklama debounce koruması** (çift tıklamada tek pencere açılışı ve odağa alma) ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
+- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **Windows 11 Alt+Tab 3D/Akrilik Görev Değiştirici**, **çift tıklama debounce koruması** (çift tıklamada tek pencere açılışı ve odağa alma) ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
+- **Küresel Arama (Ctrl+K) & Satır İçi Bilimsel Hesaplama**: Başlat ve arama paletinde anlık matematik/fizik formül değerlendirmesi (örn. `2^10`, `sqrt(144)`, `2*pi*6371`, `G*M_sun/c^2`), VFS dosya arama ve doğrudan Google arama yönlendirmesi.
 - **Sanal Masaüstleri & Görev Görünümü (Task View)**: Çoklu çalışma alanları (*Komuta*, *Kuantum AR-GE*, *Astrofizik Gözlemevi*) arasında anında geçiş.
 - **Ortalanmış Görev Çubuğu & Başlat Menüsü**: Anlık küresel arama (`Ctrl+K`), sabitlenmiş uygulamalar, son AR-GE dosyaları, güç menüsü (Kilitle, Uyku, Yeniden Başlat, Kapat).
 - **Hızlı Ayarlar, Bildirim Merkezi, Takvim, Widget'lar ve Pano Geçmişi**: Gerçek ekran parlaklığı/gece ışığı filtresi, ses kontrolü, J.A.R.V.I.S. sürekli dinleme modu, sağ tık bağlam menüsü ve `Ctrl+Shift+V` pano geçmişi.
@@ -23,9 +24,13 @@
   3. **Windows 11 Fluent Mica** (`win11-mica` — klasik modern Windows 11 görünümü)
   4. **Quantro Vellum Açık** (`vellum-light` — uzun form makale ve belge okuma/yazma yüzeyi)
 
-### 2. J.A.R.V.I.S. Sesli Yapay Zekâ ve Sistem Komutanı
-- **Çift Yönlü Türkçe ve İngilizce Ses Etkileşimi**: Tarayıcı Web Speech API (`SpeechRecognition` + `SpeechSynthesis`), Web Audio API gerçek zamanlı Arc-Reactor frekans görselleştiricisi, **mikrofon ara ses önbelleği** (konuşup durdurulduğunda hiçbir sözcüğü kaybetmeden anında işleme ve sesli yanıtlama) ve yerel işletim sistemi TTS köprüsü (`/api/tts` -> ElevenLabs API, `termux-tts-speak`, `espeak-ng`, QEMU seri hat `scripts/jarvis-voice-bridge.py`).
-- **Gelişmiş Sohbet ve Asistan Zekâsı**: Hem bilimsel hem gündelik konularda zengin Türkçe sohbet, espri, hava/saat bilgisi, genel kültür ve sistem tanılama.
+### 2. J.A.R.V.I.S. Bilişsel Bilişim ve Sesli Komuta Motoru
+- **Bilişsel Çalışma Belleği (Working Memory)**: Takip eden soruları ve konuşma bağlamını anlar; örneğin *"10 Güneş kütleli kara delik hesapla"* dedikten sonra *"Peki olay ufku ne kadar?"* dendiğinde kütleyi otomatik hatırlar ve yanıtlar.
+- **Otonom Araç Çağırma Ajanı (Autonomous Tool Execution)**:
+  - `tool.search_web`: Canlı Google/web araması yapar, sonuçları özetler ve tarayıcıda açar.
+  - `tool.terminal_exec`: Ana makinede doğrudan Bash komutları yürütür ve çıktıyı sesli raporlar.
+  - `tool.vfs_save`: Önemli araştırmacı notlarını VFS'ye kaydeder.
+- **Sıfır Gecikmeli Ses Önbelleği & Çift Yönlü İletişim**: Web Speech API (`SpeechRecognition` + `SpeechSynthesis`), **mikrofon ara ses önbelleği** (konuşup durdurulduğunda hiçbir sözcüğü kaybetmeden anında işleme ve sesli yanıtlama), Web Audio Arc-Reactor görselleştiricisi ve ElevenLabs / Yerel OS TTS köprüsü.
 - **Doğrudan İşletim Sistemi ve Laboratuvar Kontrolü**:
   - *"Jarvis kuantum laboratuvarını aç"* / *"Jarvis pencereleri yan yana diz"* / *"Jarvis tüm pencereleri küçült"*
   - *"Jarvis Bell durumu oluştur"* -> 2 kübitlik $|\Phi^+\rangle = \frac{|00\rangle + |11\rangle}{\sqrt{2}}$ dolanıklık devresini kurar, 1024 ölçüm alır ve sonucu sesli raporlar.
@@ -54,7 +59,7 @@
 
 ### 4. Bare-Metal AArch64 Çekirdeği (UEFI + Limine)
 `kernel/` dizini altında gerçek donanım ve `qemu-system-aarch64` üzerinde önyüklenen, C17 ve AArch64 Assembly ile yazılmış bağımsız çekirdek yer alır:
-- **Bellek ve Süreç**: 4 KB Fiziksel Sayfa Ayırıcı (`pmm.c`), 4-Seviyeli AArch64 Sanal Bellek (`vmm.c`), Coalescing Kernel Heap (`heap.c`), Donanımsal Preemptive Context Switch ve `VBAR_EL1` Exception Vektörleri (`vectors.S`, `context.S`).
+- **Bellek, Süreç ve Sistem Çağrıları**: 4 KB Fiziksel Sayfa Ayırıcı (`pmm.c`), 4-Seviyeli AArch64 Sanal Bellek (`vmm.c`), Coalescing Kernel Heap (`heap.c`), Donanımsal Preemptive Context Switch ve `VBAR_EL1` Exception Vektörleri (`vectors.S`, `context.S`), **AArch64 `svc #0` Sistem Çağrı Tablosu (`syscall.c`, `syscall.h`)** ve **Görevler Arası Dairesel Mesajlaşma (`ipc.c`, `ipc.h`)**.
 - **Depolama, Ağ ve İkili Yükleme**: Sanal Dosya Sistemi (`vfs.c`), On-Disk FAT32 BPB ayrıştırıcısı (`fat.c`), 64-bit ELF yükleyici (`elfloader.c`), Ethernet/ARP/IPv4/ICMP/UDP/TCP yığını (`net/`).
 - **Çekirdek İçi QPU, Astro ve J.A.R.V.I.S.**: Q16.16 sabit noktalı 4-kübit durum vektörü yardımcı işlemcisi (`kernel/quantum/qpu.c`), astrofizik motoru (`kernel/astro/astro.c`), çekirdek içi J.A.R.V.I.S. komut yorumlayıcısı (`kernel/jarvis/jarvis.c`) ve Framebuffer masaüstü arayüzü (`kernel/gfx/gui.c`).
 

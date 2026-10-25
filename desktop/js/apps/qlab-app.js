@@ -45,6 +45,8 @@ export function mountQLabApp(container, osContext, args = {}) {
           <option value="grover2">Grover Arama Algoritması (2q)</option>
           <option value="teleportation">Kuantum Işınlama (3q)</option>
           <option value="superdense">Süperyoğun Kodlama (2q)</option>
+          <option value="qft">Kuantum Fourier Dönüşümü QFT (3q)</option>
+          <option value="deutschJozsa">Deutsch-Jozsa Algoritması (3q)</option>
           <option value="interference">Çift Yarık Girişim (1q H-RZ-H)</option>
         </select>
 
@@ -52,6 +54,11 @@ export function mountQLabApp(container, osContext, args = {}) {
         <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2);" title="RX/RY/RZ dönüş açısı (derece)">
           <span>θ°:</span>
           <input type="number" class="input mono" id="ql-theta-deg" value="90" step="15" min="-360" max="360" style="width:62px;padding:3px 6px;" />
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2);" title="Dekolerans / Faz Sönümlemesi (T2 dephasing)">
+          <span>Gürültü T₂:</span>
+          <input type="range" id="ql-noise-t2" min="0" max="1" step="0.05" value="0" style="width:65px;cursor:pointer;" />
+          <span id="ql-noise-val" class="mono" style="font-size:10px;min-width:24px;">0%</span>
         </label>
         <button type="button" class="btn btn-sm" id="ql-clear-btn">Sıfırla</button>
         <button type="button" class="btn btn-sm" id="ql-save-qasm-btn">VFS'ye .qasm Kaydet</button>
@@ -230,6 +237,15 @@ export function mountQLabApp(container, osContext, args = {}) {
     `;
   }
 
+  const noiseSlider = container.querySelector('#ql-noise-t2');
+  const noiseValEl = container.querySelector('#ql-noise-val');
+
+  noiseSlider?.addEventListener('input', () => {
+    const val = Number(noiseSlider.value) || 0;
+    if (noiseValEl) noiseValEl.textContent = `${Math.round(val * 100)}%`;
+    renderAll();
+  });
+
   function renderAll() {
     circuit.run();
     renderPalette();
@@ -270,8 +286,16 @@ export function mountQLabApp(container, osContext, args = {}) {
       )
       .join('');
 
-    // Histogram
-    entropyBadge.textContent = `H = ${(lastSample.shannonEntropy ?? lastSample.entropy ?? 0).toFixed(2)} bit`;
+    // Histogram & Dekolerans Modeli
+    const noiseLevel = Number(noiseSlider?.value) || 0;
+    const noiseRes = noiseLevel > 0 ? circuit.simulateNoise({ phaseDamping: noiseLevel }) : null;
+    if (noiseRes) {
+      entropyBadge.textContent = `H = ${(lastSample.shannonEntropy ?? 0).toFixed(2)}b · Saflık: ${(noiseRes.purity * 100).toFixed(0)}%`;
+      entropyBadge.className = noiseRes.isPure ? 'badge badge-patina num' : 'badge badge-warning num';
+    } else {
+      entropyBadge.textContent = `H = ${(lastSample.shannonEntropy ?? lastSample.entropy ?? 0).toFixed(2)} bit`;
+      entropyBadge.className = 'badge badge-patina num';
+    }
     const entries = Object.entries(lastSample.counts).sort((a, b) => a[0].localeCompare(b[0]));
     histEl.innerHTML = entries
       .map(([bits, cnt]) => {

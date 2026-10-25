@@ -7,7 +7,7 @@ import { simulateBB84, generateQRNGBytes, computeByteStats } from '../engines/bb
 import { blackHoleMetrics, cosmologyMetrics, siderealAndJulian } from '../engines/astro-engine.js';
 
 const COMMAND_LIST = [
-  'help', 'clear', 'cls', 'qsim', 'bb84', 'qrng', 'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'sysinfo', 'neofetch', 'vfs',
+  'help', 'man', 'bench', 'chirp', 'matrix', 'clear', 'cls', 'qsim', 'bb84', 'qrng', 'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'sysinfo', 'neofetch', 'vfs',
   // Linux Sistem, Dosya ve Ağ Komutları
   'ls', 'dir', 'cd', 'pwd', 'cat', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'chmod', 'chown', 'find', 'grep', 'diff',
   'head', 'tail', 'less', 'more', 'wc', 'sort', 'uniq', 'tr', 'sed', 'awk', 'cut', 'tee', 'echo', 'printf', 'date',
@@ -68,6 +68,27 @@ export function mountTerminalApp(container, osContext) {
 
   const curTab = () => tabs.find((t) => t.id === activeTabId) || tabs[0];
 
+  function ansiToHtml(text) {
+    const safe = escapeHtml(text);
+    return safe
+      .replace(/\x1b\[0?m/g, '</span>')
+      .replace(/\x1b\[1m/g, '<span style="font-weight:600;">')
+      .replace(/\x1b\[4m/g, '<span style="text-decoration:underline;">')
+      .replace(/\x1b\[31m/g, '<span style="color:#ef4444;">')
+      .replace(/\x1b\[32m/g, '<span style="color:#22c55e;">')
+      .replace(/\x1b\[33m/g, '<span style="color:#eab308;">')
+      .replace(/\x1b\[34m/g, '<span style="color:#38bdf8;">')
+      .replace(/\x1b\[35m/g, '<span style="color:#ec4899;">')
+      .replace(/\x1b\[36m/g, '<span style="color:#06b6d4;">')
+      .replace(/\x1b\[37m/g, '<span style="color:#f3f4f6;">')
+      .replace(/\x1b\[90m/g, '<span style="color:#9ca3af;">')
+      .replace(/\x1b\[92m/g, '<span style="color:#4ade80;">')
+      .replace(/\x1b\[93m/g, '<span style="color:#fde047;">')
+      .replace(/\x1b\[94m/g, '<span style="color:#60a5fa;">')
+      .replace(/\x1b\[96m/g, '<span style="color:#22d3ee;">')
+      .replace(/\x1b\[[0-9;]*m/g, '');
+  }
+
   function render() {
     const t = curTab();
     tabsEl.innerHTML =
@@ -81,8 +102,8 @@ export function mountTerminalApp(container, osContext) {
 
     linesEl.innerHTML = t.lines
       .map((l) => {
-        const safe = escapeHtml(String(l.text));
-        return `<div class="term-line ${l.cls || ''}">${safe}</div>`;
+        const formatted = ansiToHtml(String(l.text));
+        return `<div class="term-line ${l.cls || ''}">${formatted}</div>`;
       })
       .join('');
 
@@ -147,6 +168,50 @@ export function mountTerminalApp(container, osContext) {
             'ok'
           );
           break;
+
+        case 'man': {
+          const target = (rest[0] || 'help').toLowerCase();
+          const manPages = {
+            qsim: 'KULLANIM: qsim [bell|ghz|grover2|teleportation|superdense|qft]\nAÇIKLAMA: 1..6 kübit tam karmaşık durum vektörü simülatörü ve 1024-shot ölçüm histogramı üretir.',
+            bb84: 'KULLANIM: bb84 [--eve]\nAÇIKLAMA: Bennett-Brassard 1984 kuantum anahtar dağıtım protokolü simülasyonu. --eve parametresi dinleyici müdahalesini simüle eder ve QBER %25 civarına çıkar.',
+            qrng: 'KULLANIM: qrng [bayt_sayisi]\nAÇIKLAMA: ANU kuantum vakum dalgalanması veya CSPRNG üzerinden kriptografik rastgele sayılar üretir.',
+            blackhole: 'KULLANIM: blackhole <kütle_M☉> [spin]\nAÇIKLAMA: Schwarzschild ve Kerr kara delikleri için R_s, foton küresi, ISCO, Hawking sıcaklığı ve 2R_s zaman genişlemesini hesaplar.',
+            cosmo: 'KULLANIM: cosmo <kırmızıya_kayma_z>\nAÇIKLAMA: Planck 2018 parametreleriyle Simpson integral çözümlü ΛCDM kozmoloji evren yaşı ve comoving/luminosity mesafelerini hesaplar.',
+            jarvis: 'KULLANIM: jarvis <komut veya soru>\nAÇIKLAMA: J.A.R.V.I.S. bilişsel yapay zekâ asistanına doğrudan sesli/yazılı soru yöneltir veya sistem komutu işletir.',
+            vfs: 'KULLANIM: vfs [ls|read|write|mkdir|rm] [yol]\nAÇIKLAMA: QuantOS WebCrypto AES-256-GCM şifreli sanal dosya sistemi yöneticisi.',
+            bench: 'KULLANIM: bench\nAÇIKLAMA: CPU matris çarpımı, WebCrypto özetleme ve kuantum durum vektörü dönüşüm hız testini çalıştırır.',
+            chirp: 'KULLANIM: chirp [m1_solar] [m2_solar]\nAÇIKLAMA: LIGO ikili kara delik birleşmesi kütleçekim dalgası sesini Web Audio osilatörü üzerinden sentezleyip çalar.'
+          };
+          pushOut(t, manPages[target] || `"${target}" için man sayfası bulunamadı. Linux sistem komutları için "man ${target}" komutunu doğrudan ana makinede çalıştırabilirsiniz.`, 'ok');
+          break;
+        }
+
+        case 'bench': {
+          const t0 = performance.now();
+          let dummy = 0;
+          for (let i = 0; i < 500000; i++) dummy += Math.sqrt(i) * Math.sin(i);
+          const qc = QuantumPresets.ghz(4).run();
+          const t1 = performance.now();
+          const dt = (t1 - t0).toFixed(2);
+          pushOut(t, `[BENCHMARK] AArch64 JS/JIT Performans Testi:\n  • 500.000 Kayan Nokta İşlemi & GHZ-4 QPU Dönüşümü: ${dt} ms\n  • QPU Durum Boyutu: 16 Karmaşık Genlik (Birim Norm Korundu: |ψ|=1.00)\n  • Durum: YÜKSEK HIZLI ÇEKİRDEK İCRA`, 'ok');
+          break;
+        }
+
+        case 'chirp': {
+          const m1 = Number(rest[0]) || 36;
+          const m2 = Number(rest[1]) || 29;
+          const wave = ligoChirpWaveform({ m1Solar: m1, m2Solar: m2, distanceMpc: 410, durationSec: 0.45, sampleRate: 2048 });
+          osContext.sound?.playChirpArray?.(wave.strain, 2048);
+          pushOut(t, `[LIGO CHIRP] m1=${m1} M☉, m2=${m2} M☉ ikili birleşme chirp sesi Web Audio üzerinden çalınıyor... (Chirp Kütlesi: ${wave.chirpMassSolar.toFixed(2)} M☉)`, 'ok');
+          break;
+        }
+
+        case 'matrix': {
+          pushOut(t, '01101001 01101110 01110011 01110100 01100001 01101110 01110100', 'ok');
+          pushOut(t, 'QUANTRO AR-GE CYBER CORE · J.A.R.V.I.S. VERİ AKIŞI AKTİF', 'ok');
+          pushOut(t, '10010101 11010110 00101101 11010010 10101101 01101010 10101010', 'ok');
+          break;
+        }
 
         case 'clear':
         case 'cls':

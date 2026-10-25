@@ -1,0 +1,114 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { QuantumCircuit, QuantumPresets } from '../desktop/js/engines/quantum-engine.js';
+import { gravitationalLensing, NBodySystem } from '../desktop/js/engines/astro-engine.js';
+import { JarvisBrain } from '../desktop/js/engines/jarvis-brain.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+
+test('Deep Architecture — Quantum Decoherence, Density Matrix, QFT & Deutsch-Jozsa', () => {
+  // 1) QFT 3-qubit
+  const qft = QuantumPresets.qft(3);
+  assert.equal(qft.numQubits, 3);
+  assert.equal(qft.dim, 8);
+  const probs = qft.probabilities();
+  assert.equal(probs.length, 8);
+
+  // 2) Deutsch-Jozsa balanced
+  const dj = QuantumPresets.deutschJozsa(true);
+  assert.equal(dj.numQubits, 3);
+  const djSample = dj.sample(256);
+  assert.ok(djSample.shots === 256);
+
+  // 3) Density matrix and noise simulation on Bell state
+  const bell = QuantumPresets.bell();
+  const rho = bell.densityMatrix();
+  assert.equal(rho.length, 4);
+  assert.equal(rho[0].length, 4);
+
+  // Pure Bell state has purity = 1.0
+  const pureRes = bell.simulateNoise({ depolarizing: 0, phaseDamping: 0 });
+  assert.ok(Math.abs(pureRes.purity - 1.0) < 1e-6, `Pure Bell state purity should be ~1.0, got ${pureRes.purity}`);
+  assert.ok(pureRes.isPure === true);
+
+  // Under phase damping decoherence, purity drops and state becomes mixed
+  const noisyRes = bell.simulateNoise({ phaseDamping: 0.8 });
+  assert.ok(noisyRes.purity < 0.95, `Noisy purity should drop below 0.95, got ${noisyRes.purity}`);
+});
+
+test('Deep Architecture — Gravitational Lensing & Multi-body Presets', () => {
+  // 1) Gravitational Lensing
+  const lens = gravitationalLensing({ massSolar: 1e11, dLensMpc: 1000, dSourceMpc: 2000 });
+  assert.ok(lens.thetaE_arcsec > 0.01, `Einstein ring should be > 0.01 arcsec, got ${lens.thetaE_arcsec}`);
+  assert.ok(lens.deflectionArcsec > 0.01, `Deflection angle should be > 0.01 arcsec, got ${lens.deflectionArcsec}`);
+  assert.ok(lens.magnification.total > 1.0, `Total magnification should be > 1.0, got ${lens.magnification.total}`);
+
+  // 2) TRAPPIST-1 multi-body
+  const trappist = NBodySystem.Presets.trappist1();
+  assert.equal(trappist.bodies.length, 8, 'TRAPPIST-1 should have star + 7 planets');
+  const e1 = trappist.totalEnergy();
+  assert.ok(Number.isFinite(e1.total), 'Initial total energy must be finite');
+  trappist.step(0.005);
+  const e2 = trappist.totalEnergy();
+  assert.ok(Math.abs(e2.total - e1.total) < 1e-4, 'Symplectic integrator must conserve energy in TRAPPIST-1');
+
+  // 3) Lagrange Trojan L4/L5
+  const trojan = NBodySystem.Presets.lagrangeTrojan();
+  assert.equal(trojan.bodies.length, 4, 'Trojan preset should have Sun + Jupiter + L4 + L5');
+  trojan.step(0.01);
+  assert.ok(Number.isFinite(trojan.totalEnergy().total));
+});
+
+test('Deep Architecture — J.A.R.V.I.S. Cognitive Working Memory & Autonomous Tools', async () => {
+  const jarvis = new JarvisBrain({
+    osContext: {
+      sound: { playJarvisAck: () => {}, playQuantumCollapse: () => {} },
+      openApp: () => {}
+    }
+  });
+
+  // Step 1: User asks to calculate black hole
+  const res1 = await jarvis.processCommand('10 güneş kütleli kara delik hesapla');
+  assert.equal(res1.intent, 'astro.blackhole');
+  assert.ok(res1.reply.includes('Schwarzschild yarıçapı'));
+
+  // Step 2: User asks follow-up context question without repeating the mass
+  const res2 = await jarvis.processCommand('Peki olay ufku ne kadar?');
+  assert.equal(res2.intent, 'context.blackhole.horizon');
+  assert.ok(res2.reply.includes('Güneş kütleli'));
+  assert.ok(res2.reply.includes('olay ufku'));
+
+  // Step 3: Another follow-up on Hawking radiation
+  const res3 = await jarvis.processCommand('Hawking sıcaklığı kaç Kelvin?');
+  assert.equal(res3.intent, 'context.blackhole.hawking');
+  assert.ok(res3.reply.includes('Hawking'));
+
+  // Step 4: Autonomous Web Search Tool
+  const resWeb = await jarvis.processCommand('Google\'da James Webb teleskobu ara');
+  assert.equal(resWeb.intent, 'tool.search_web');
+  assert.ok(resWeb.reply.includes('James Webb'));
+
+  // Step 5: Autonomous Terminal Exec Tool
+  const resTerm = await jarvis.processCommand('Terminalde whoami çalıştır');
+  assert.equal(resTerm.intent, 'tool.terminal_exec');
+});
+
+test('Deep Architecture — AArch64 Bare-Metal Kernel Syscall & IPC Artifacts', () => {
+  const kernelElf = path.join(ROOT, 'build/kernel');
+  const espKernel = path.join(ROOT, 'esp/boot/kernel');
+  const espBoot = path.join(ROOT, 'esp/EFI/BOOT/BOOTAA64.EFI');
+
+  assert.ok(fs.existsSync(kernelElf), 'build/kernel ELF mevcut olmalı');
+  assert.ok(fs.existsSync(espKernel), 'esp/boot/kernel mevcut olmalı');
+  assert.ok(fs.existsSync(espBoot), 'esp/EFI/BOOT/BOOTAA64.EFI Limine EFI mevcut olmalı');
+
+  assert.ok(fs.existsSync(path.join(ROOT, 'kernel/include/syscall.h')), 'kernel/include/syscall.h mevcut olmalı');
+  assert.ok(fs.existsSync(path.join(ROOT, 'kernel/arch/aarch64/syscall.c')), 'kernel/arch/aarch64/syscall.c mevcut olmalı');
+  assert.ok(fs.existsSync(path.join(ROOT, 'kernel/include/ipc.h')), 'kernel/include/ipc.h mevcut olmalı');
+  assert.ok(fs.existsSync(path.join(ROOT, 'kernel/lib/ipc.c')), 'kernel/lib/ipc.c mevcut olmalı');
+});
