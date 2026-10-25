@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=QuantOS Desktop (Windows 11 + J.A.R.V.I.S. Edition)
+Comment=Quantro AR-GE Kuantum ve Astrofizik Masaüstü Ortamı
+Exec=/opt/quantos/start-quantos.sh web
+Type=Application
+DesktopNames=QuantOS

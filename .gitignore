@@ -1,0 +1,29 @@
+# Build artifacts
+build/
+esp/
+*.o
+*.elf
+*.iso
+*.img
+
+# Runtime & QEMU logs
+*.log
+*.sock
+qemu_*.txt
+serial.log
+
+# Node & environment
+node_modules/
+coverage/
+.env
+.env.*
+!.env.example
+.vercel/
+
+# OS / Editor / Python files
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.swp
+*~

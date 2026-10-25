@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <pattern id="draftGrid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#16181C" stroke-opacity="0.06" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="#ECE7DF"/>
+  <rect width="1920" height="1080" fill="url(#draftGrid)"/>
+  <g fill="none" stroke="#96582D" stroke-opacity="0.18" stroke-width="1.2">
+    <circle cx="960" cy="520" r="240"/>
+    <circle cx="960" cy="520" r="360" stroke-dasharray="6 8"/>
+    <line x1="600" y1="520" x2="1320" y2="520"/>
+    <line x1="960" y1="160" x2="960" y2="880"/>
+  </g>
+</svg>

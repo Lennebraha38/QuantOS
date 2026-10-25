@@ -1,0 +1,26 @@
+{
+  "name": "QuantOS — Quantro AR-GE İşletim Sistemi",
+  "short_name": "QuantOS",
+  "description": "Windows 11 masaüstü deneyimi, J.A.R.V.I.S. sesli yapay zekâ asistanı ve Quantro AR-GE kuantum/astrofizik araştırma ortamı.",
+  "lang": "tr-TR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0E0F12",
+  "theme_color": "#0E0F12",
+  "icons": [
+    {
+      "src": "./assets/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

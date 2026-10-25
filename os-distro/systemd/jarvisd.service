@@ -1,0 +1,14 @@
+[Unit]
+Description=QuantOS J.A.R.V.I.S. Voice & Hardware Telemetry Daemon
+After=network.target sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/quantos/os-distro/jarvisd/jarvisd.py
+Restart=on-failure
+RestartSec=2
+Environment=JARVISD_HOST=127.0.0.1
+Environment=JARVISD_PORT=3801
+
+[Install]
+WantedBy=multi-user.target

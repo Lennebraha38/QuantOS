@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="48%" r="54%">
+      <stop offset="0%" stop-color="#D1925C" stop-opacity="0.11"/>
+      <stop offset="55%" stop-color="#5F8A7A" stop-opacity="0.035"/>
+      <stop offset="100%" stop-color="#0E0F12" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="fadeMask">
+      <radialGradient id="mGrad" cx="50%" cy="50%" r="58%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>
+        <stop offset="75%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+      </radialGradient>
+      <rect width="1920" height="1080" fill="url(#mGrad)"/>
+    </mask>
+  </defs>
+  <rect width="1920" height="1080" fill="#0E0F12"/>
+  <rect width="1920" height="1080" fill="url(#halo)"/>
+  <g mask="url(#fadeMask)" fill="none" stroke-width="1">
+    <!-- Source 1: (780, 540), Source 2: (1140, 540) Double-Slit Wavefronts -->
+    <g stroke="#EAE7E1" stroke-opacity="0.055">
+      <circle cx="780" cy="540" r="80"/><circle cx="780" cy="540" r="160"/>
+      <circle cx="780" cy="540" r="240"/><circle cx="780" cy="540" r="320"/>
+      <circle cx="780" cy="540" r="400"/><circle cx="780" cy="540" r="480"/>
+      <circle cx="780" cy="540" r="560"/><circle cx="780" cy="540" r="640"/>
+      <circle cx="780" cy="540" r="720"/><circle cx="780" cy="540" r="800"/>
+      <circle cx="1140" cy="540" r="80"/><circle cx="1140" cy="540" r="160"/>
+      <circle cx="1140" cy="540" r="240"/><circle cx="1140" cy="540" r="320"/>
+      <circle cx="1140" cy="540" r="400"/><circle cx="1140" cy="540" r="480"/>
+      <circle cx="1140" cy="540" r="560"/><circle cx="1140" cy="540" r="640"/>
+      <circle cx="1140" cy="540" r="720"/><circle cx="1140" cy="540" r="800"/>
+    </g>
+    <!-- Constructive interference hyperbolas -->
+    <g stroke="#D1925C" stroke-opacity="0.18" stroke-width="1.2">
+      <line x1="960" y1="60" x2="960" y2="1020"/>
+      <path d="M900 540 Q 860 300 720 80"/>
+      <path d="M900 540 Q 860 780 720 1000"/>
+      <path d="M1020 540 Q 1060 300 1200 80"/>
+      <path d="M1020 540 Q 1060 780 1200 1000"/>
+      <path d="M840 540 Q 760 320 510 100"/>
+      <path d="M840 540 Q 760 760 510 980"/>
+      <path d="M1080 540 Q 1160 320 1410 100"/>
+      <path d="M1080 540 Q 1160 760 1410 980"/>
+    </g>
+    <!-- Slit Aperture Markers -->
+    <circle cx="780" cy="540" r="3.5" fill="#D1925C" fill-opacity="0.75"/>
+    <circle cx="1140" cy="540" r="3.5" fill="#D1925C" fill-opacity="0.75"/>
+    <line x1="620" y1="540" x2="764" y2="540" stroke="#EAE7E1" stroke-opacity="0.14"/>
+    <line x1="796" y1="540" x2="1124" y2="540" stroke="#EAE7E1" stroke-opacity="0.14"/>
+    <line x1="1156" y1="540" x2="1300" y2="540" stroke="#EAE7E1" stroke-opacity="0.14"/>
+  </g>
+</svg>

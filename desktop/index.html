@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="ink-copper">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0E0F12" />
+  <meta name="description" content="QuantOS — Quantro AR-GE Kuantum Hesaplama, Astrofizik Gözlemevi ve J.A.R.V.I.S. Sesli İşletim Sistemi" />
+  <title>QuantOS — Quantro AR-GE İşletim Sistemi</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./assets/icon-192.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./css/quantos.css" />
+  <link rel="stylesheet" href="./css/apps.css" />
+</head>
+<body>
+  <!-- Kanun K.09: Tek Global Statik 128x128 Grain Dokusu -->
+  <div class="os-grain-layer" aria-hidden="true"></div>
+  <!-- Gerçek Ekran Parlaklığı ve Gece Işığı Filtresi -->
+  <div class="os-optical-filter" id="os-optical-filter" aria-hidden="true"></div>
+
+  <!-- 1. UEFI / Limine Önyükleme Ekranı -->
+  <section class="boot-screen" id="boot-screen" aria-label="QuantOS UEFI Önyükleme Ekranı">
+    <div class="boot-card">
+      <div class="boot-brand">
+        <img src="./assets/quantro-mark.svg" alt="Quantro AR-GE Logosu" />
+        <div>
+          <h1>QuantOS 24H2</h1>
+          <p>Quantro AR-GE AArch64 UEFI · DWM Masaüstü Kompozitörü · J.A.R.V.I.S. Çekirdeği</p>
+        </div>
+      </div>
+      <div class="boot-log" id="boot-log" role="status" aria-live="polite"></div>
+      <div class="boot-progress-wrap">
+        <div class="boot-progress-bar" aria-hidden="true">
+          <div class="boot-progress-fill" id="boot-progress-fill"></div>
+        </div>
+        <button type="button" class="btn btn-sm" id="boot-skip-btn">Atla</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Windows 11 Kilit Ekranı -->
+  <section class="lock-screen" id="lock-screen" tabindex="0" hidden aria-label="Kilit Ekranı">
+    <div class="lock-clock-block">
+      <div class="lock-time num" id="lock-time">00:00</div>
+      <div class="lock-date" id="lock-date">Yükleniyor...</div>
+    </div>
+
+    <div class="lock-telemetry-strip">
+      <div class="lock-pill">
+        <div class="lock-pill-label">KAYSERİ GÖZLEMEVİ · LMST</div>
+        <div class="lock-pill-val num" id="lock-lmst" data-source="equation">--:--:--</div>
+      </div>
+      <div class="lock-pill">
+        <div class="lock-pill-label">JÜLYEN GÜNÜ (JD)</div>
+        <div class="lock-pill-val num" id="lock-jd" data-source="equation">2460000.00000</div>
+      </div>
+      <div class="lock-pill">
+        <div class="lock-pill-label">DÜNYA YÖRÜNGE HIZI (VIS-VIVA)</div>
+        <div class="lock-pill-val num" id="lock-vearth" data-source="equation">29.78 km/s</div>
+      </div>
+    </div>
+
+    <div class="lock-hint">Kilidi açmak için tıklayın veya Enter / Boşluk tuşuna basın</div>
+  </section>
+
+  <!-- 3. Windows Hello / Quantro Araştırmacı Oturum Açma Ekranı -->
+  <section class="login-screen" id="login-screen" hidden aria-label="Oturum Açma Ekranı">
+    <div class="login-card">
+      <div class="login-avatar">
+        <img src="./assets/quantro-mark.svg" alt="Quantro Araştırmacı" />
+      </div>
+      <h2 class="login-name">Quantro Baş Araştırmacısı</h2>
+      <p class="login-role">Kuantum Mekaniği &amp; Astrofizik Bölümü · Kayseri</p>
+      <div class="login-hello-status" id="login-hello-status">
+        Windows Hello · TPM 2.0 Anahtar Doğrulandı
+      </div>
+      <div class="login-actions">
+        <button type="button" class="btn btn-primary" id="login-submit-btn">Oturum Aç</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="login-back-lock-btn">Kilit Ekranına Dön</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Tam Windows 11 + J.A.R.V.I.S. Masaüstü Ortamı -->
+  <main class="desktop-root" id="desktop-root" hidden aria-label="QuantOS Masaüstü">
+    <div class="desktop-stage" id="desktop-stage">
+      <!-- Seçilebilir Masaüstü Kısayolları -->
+      <div class="desktop-icons" id="desktop-icons" role="list" aria-label="Masaüstü Kısayolları"></div>
+
+      <!-- İsteğe Bağlı J.A.R.V.I.S. Masaüstü Enstrüman HUD Katmanı -->
+      <aside class="jarvis-desktop-hud" id="jarvis-desktop-hud" aria-label="J.A.R.V.I.S. Enstrüman Gösterge Paneli">
+        <div class="hud-core-card">
+          <button type="button" class="hud-orb-btn" id="hud-jarvis-orb" title="J.A.R.V.I.S. Sesli Asistanı Başlat / Durdur" aria-label="J.A.R.V.I.S. Ses Çekirdeği"></button>
+          <div class="hud-core-meta">
+            <div class="hud-core-title">
+              <span>J.A.R.V.I.S. Komuta</span>
+              <span class="badge badge-accent" id="hud-jarvis-badge">HAZIR</span>
+            </div>
+            <div class="hud-core-sub" id="hud-jarvis-sub">Sesli veya yazılı komut için tıklayın</div>
+          </div>
+        </div>
+
+        <div class="hud-telemetry-card">
+          <div class="eyebrow">ASTRONOMİK ENSTRÜMAN</div>
+          <div class="hud-row">
+            <span class="hud-row-label">Kayseri LMST (35.48°D)</span>
+            <span class="hud-row-val num" id="hud-lmst" data-source="equation">--:--:--</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-row-label">Jülyen Günü</span>
+            <span class="hud-row-val num" id="hud-jd" data-source="equation">--</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-row-label">Yörünge Hızı (Vis-Viva)</span>
+            <span class="hud-row-val num" id="hud-orbital-v" data-source="equation">-- km/s</span>
+          </div>
+          <div class="hud-provenance">
+            <span>Kaynak: IAU 2006 / Meeus</span>
+            <span id="hud-utc-stamp">--:-- UTC</span>
+          </div>
+        </div>
+
+        <div class="hud-telemetry-card">
+          <div class="eyebrow">SİSTEM &amp; KUANTUM TELEMETRİ</div>
+          <div class="hud-row">
+            <span class="hud-row-label">DWM Kare Hızı</span>
+            <span class="hud-row-val num" id="hud-fps" data-source="api">-- FPS</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-row-label">Host Çekirdek / Bellek</span>
+            <span class="hud-row-val num" id="hud-host-mem" data-source="api">Ölçülüyor...</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-row-label">QRNG Shannon Entropi</span>
+            <span class="hud-row-val num" id="hud-qrng-ent" data-source="api">-- bit/B</span>
+          </div>
+          <div class="hud-provenance">
+            <span id="hud-qrng-src">Kaynak: /api/system · /api/qrng</span>
+            <span id="hud-vfs-used">VFS: -- KB</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Kenar Sürükleme Snap Önizleme Hayaleti -->
+      <div class="snap-preview-ghost" id="snap-preview-ghost" hidden aria-hidden="true"></div>
+
+      <!-- DWM Pencere Katmanı -->
+      <div class="windows-layer" id="windows-layer"></div>
+    </div>
+
+    <!-- Ortalanmış Windows 11 Görev Çubuğu -->
+    <footer class="taskbar" id="taskbar" role="navigation" aria-label="Görev Çubuğu">
+      <div class="taskbar-left">
+        <button type="button" class="taskbar-widget-btn" id="tb-widgets-btn" title="Widget Paneli">
+          <span id="tb-widgets-icon"></span>
+          <span class="widget-btn-meta">
+            <span class="widget-btn-top" id="tb-desktop-name">Masaüstü 1: Komuta</span>
+            <span class="widget-btn-sub num" id="tb-sidereal-mini">LMST --:--</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="taskbar-center">
+        <button type="button" class="tb-icon-btn" id="tb-start-btn" title="Başlat" aria-label="Başlat Menüsü">
+          <img src="./assets/quantro-mark.svg" alt="" />
+        </button>
+        <button type="button" class="tb-icon-btn" id="tb-search-btn" title="Ara (Ctrl+K)" aria-label="Küresel Arama"></button>
+        <button type="button" class="tb-icon-btn" id="tb-taskview-btn" title="Görev Görünümü (Sanal Masaüstleri)" aria-label="Görev Görünümü"></button>
+        <button type="button" class="tb-icon-btn tb-jarvis-orb" id="tb-jarvis-btn" title="J.A.R.V.I.S. Sesli Asistan (Ctrl+Space)" aria-label="J.A.R.V.I.S. Asistan"></button>
+        <div class="tb-divider" aria-hidden="true"></div>
+        <div class="taskbar-center" id="tb-apps-strip" role="toolbar" aria-label="Sabitlenmiş ve Açık Uygulamalar"></div>
+      </div>
+
+      <div class="taskbar-right">
+        <button type="button" class="tray-btn mono" id="tb-lang-btn" title="Klavye Düzeni Değiştir">TR Q</button>
+        <button type="button" class="tray-btn" id="tb-quicksettings-btn" title="Hızlı Ayarlar (Ağ, Ses, Ekran)" aria-label="Hızlı Ayarlar"></button>
+        <button type="button" class="tray-btn tray-clock num" id="tb-clock-btn" title="Bildirim Merkezi ve Takvim" aria-label="Saat ve Takvim">
+          <span class="tray-clock-time" id="tb-clock-time">00:00</span>
+          <span class="tray-clock-date" id="tb-clock-date">25.10.2026</span>
+        </button>
+        <button type="button" class="show-desktop-sliver" id="tb-show-desktop-btn" title="Masaüstünü Göster" aria-label="Masaüstünü Göster"></button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- 5. Açılır Kabuk Panelleri (Flyouts) -->
+
+  <!-- Başlat Menüsü -->
+  <section class="flyout-panel start-menu" id="start-menu" hidden aria-label="Başlat Menüsü">
+    <div class="start-body">
+      <div class="start-search-wrap">
+        <span id="start-search-icon"></span>
+        <input type="search" class="input start-search-input" id="start-search-input" placeholder="Uygulama, kuantum devresi veya AR-GE belgesi ara..." autocomplete="off" />
+      </div>
+
+      <div>
+        <div class="start-sec-head">
+          <span class="start-sec-title">Sabitlenenler</span>
+          <button type="button" class="btn btn-sm btn-ghost" id="start-open-store-btn">Tüm Modüller (14)</button>
+        </div>
+        <div class="start-apps-grid" id="start-apps-grid"></div>
+      </div>
+
+      <div>
+        <div class="start-sec-head">
+          <span class="start-sec-title">Önerilen AR-GE Dosyaları</span>
+          <button type="button" class="btn btn-sm btn-ghost" id="start-open-explorer-btn">Dosya Gezgini</button>
+        </div>
+        <div class="start-rec-list" id="start-rec-list"></div>
+      </div>
+    </div>
+
+    <div class="start-footer">
+      <div class="start-user">
+        <div class="start-user-avatar">
+          <img src="./assets/quantro-mark.svg" alt="" />
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:500;">Quantro AR-GE Baş Araştırmacısı</div>
+          <div style="font-size:11px;color:var(--text-3);">Kayseri Gözlemevi Oturumu</div>
+        </div>
+      </div>
+      <div>
+        <button type="button" class="btn btn-sm" id="start-power-btn" aria-label="Güç Seçenekleri">Güç</button>
+        <div class="power-menu" id="power-menu" hidden>
+          <button type="button" class="ctx-item" data-power="lock">Kilitle</button>
+          <button type="button" class="ctx-item" data-power="sleep">Uyku Modu</button>
+          <button type="button" class="ctx-item" data-power="restart">Yeniden Başlat</button>
+          <button type="button" class="ctx-item" data-power="shutdown">Bilgisayarı Kapat</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Küresel Arama Paleti (Ctrl+K) -->
+  <section class="flyout-panel search-palette" id="search-palette" hidden aria-label="Küresel Arama Paleti">
+    <input type="search" class="input" id="global-search-input" placeholder="Uygulama başlat, VFS dosyası aç veya J.A.R.V.I.S. komutu çalıştır..." autocomplete="off" />
+    <div class="search-results" id="global-search-results"></div>
+  </section>
+
+  <!-- Sanal Masaüstleri & Görev Görünümü -->
+  <section class="taskview-overlay" id="taskview-overlay" hidden aria-label="Görev Görünümü ve Sanal Masaüstleri">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="eyebrow">SANAL MASAÜSTLERİ</div>
+        <h2 class="serif" style="margin:4px 0 0;font-weight:400;font-size:22px;">Görev Görünümü</h2>
+      </div>
+      <button type="button" class="btn btn-sm" id="taskview-close-btn">Kapat (Esc)</button>
+    </div>
+    <div class="taskview-windows-grid" id="taskview-windows-grid"></div>
+    <div class="taskview-desktops-bar" id="taskview-desktops-bar"></div>
+  </section>
+
+  <!-- Soldan Kayan Windows 11 Widget Paneli -->
+  <aside class="flyout-panel widgets-drawer" id="widgets-drawer" hidden aria-label="Quantro Widget Paneli"></aside>
+
+  <!-- Hızlı Ayarlar Açılır Paneli -->
+  <section class="flyout-panel quick-settings" id="quick-settings" hidden aria-label="Hızlı Ayarlar"></section>
+
+  <!-- Bildirim Merkezi + Etkileşimli Aylık Takvim -->
+  <section class="flyout-panel notif-calendar-flyout" id="notif-calendar-flyout" hidden aria-label="Bildirim Merkezi ve Takvim"></section>
+
+  <!-- Hızlı J.A.R.V.I.S. Komut Çubuğu (Ctrl+Space) -->
+  <section class="flyout-panel jarvis-capsule" id="jarvis-capsule" hidden aria-label="J.A.R.V.I.S. Hızlı Komut Kapsülü">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="eyebrow">J.A.R.V.I.S. SESLİ &amp; YAZILI KOMUTA</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="badge badge-patina" id="jarvis-cap-state">HAZIR</span>
+        <button type="button" class="btn btn-sm btn-ghost" id="jarvis-cap-open-full">Tam Merkez</button>
+      </div>
+    </div>
+    <div class="jarvis-cap-row">
+      <button type="button" class="jarvis-mic-btn" id="jarvis-cap-mic" title="Mikrofonu Dinlemeye Al / Durdur" aria-label="Mikrofon"></button>
+      <input type="text" class="input" id="jarvis-cap-input" placeholder="Örn: Bell durumu oluştur, 10 güneş kütleli kara delik hesapla, Q-Lab aç..." autocomplete="off" />
+      <button type="button" class="btn btn-primary" id="jarvis-cap-send">Gönder</button>
+    </div>
+    <div class="jarvis-chips" id="jarvis-cap-chips"></div>
+    <div class="jarvis-cap-reply" id="jarvis-cap-reply" hidden></div>
+  </section>
+
+  <!-- Pano Geçmişi (Ctrl+Shift+V) -->
+  <section class="flyout-panel clipboard-flyout" id="clipboard-flyout" hidden aria-label="Pano Geçmişi"></section>
+
+  <!-- Sağ Tık Bağlam Menüsü -->
+  <div class="context-menu" id="context-menu" hidden role="menu"></div>
+
+  <!-- Toast Bildirim Yığını -->
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <!-- Sistem Modal Kökü -->
+  <div id="modal-root"></div>
+
+  <script type="module" src="./js/os.js"></script>
+</body>
+</html>

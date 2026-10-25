@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="skyDome" cx="68%" cy="28%" r="68%">
+      <stop offset="0%" stop-color="#1A1D23"/>
+      <stop offset="60%" stop-color="#131519"/>
+      <stop offset="100%" stop-color="#0E0F12"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#skyDome)"/>
+  <!-- Celestial pole & diurnal star arcs above Erciyes (38.73° N, 35.48° E) -->
+  <g fill="none" stroke="#EAE7E1" stroke-opacity="0.065">
+    <circle cx="1306" cy="302" r="95" stroke-dasharray="180 60"/>
+    <circle cx="1306" cy="302" r="190" stroke-dasharray="260 90"/>
+    <circle cx="1306" cy="302" r="310" stroke-dasharray="420 120"/>
+    <circle cx="1306" cy="302" r="450" stroke-dasharray="540 160"/>
+    <circle cx="1306" cy="302" r="620" stroke-dasharray="680 210"/>
+    <circle cx="1306" cy="302" r="820" stroke-dasharray="840 240"/>
+  </g>
+  <g fill="none" stroke="#D1925C" stroke-opacity="0.22" stroke-width="1.2">
+    <circle cx="1306" cy="302" r="4"/>
+    <path d="M 1015 198 A 310 310 0 0 1 1540 98"/>
+    <path d="M 862 365 A 450 450 0 0 1 1190 -132"/>
+  </g>
+  <!-- Horizon silhouette (Erciyes stratovolcano topographic profile) -->
+  <path d="M0 980 L280 956 L540 932 L780 865 L935 768 L998 738 L1042 752 L1185 848 L1460 936 L1720 962 L1920 974 L1920 1080 L0 1080 Z" fill="#0B0C0F" stroke="#2E333C" stroke-width="1"/>
+</svg>

@@ -1,0 +1,43 @@
+name: QuantOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-desktop-and-engines:
+    name: Desktop OS, Quantum/Astro Engines & J.A.R.V.I.S. Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify Integrity & Run Unit Tests
+        run: npm run check
+
+  build-and-boot-aarch64-kernel:
+    name: Bare-Metal AArch64 Kernel (UEFI / Limine + QEMU Boot Smoke Test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Cross Toolchain & QEMU AArch64 UEFI
+        run: sudo apt-get update && sudo apt-get install -y clang lld llvm make gcc-aarch64-linux-gnu qemu-system-arm qemu-efi-aarch64
+      - name: Compile Freestanding AArch64 Kernel & ESP
+        run: make clean && make && make esp
+      - name: Headless QEMU UEFI Boot & J.A.R.V.I.S. UART Smoke Test
+        run: |
+          timeout 12s qemu-system-aarch64 \
+            -M virt -cpu cortex-a53 -m 512M \
+            -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
+            -drive file=fat:rw:esp,format=raw,if=virtio \
+            -device ramfb -display none \
+            -serial file:serial.log -no-reboot || true
+          cat serial.log
+          grep -F "[QuantOS]" serial.log
+          grep -F "[qpu]" serial.log
+          grep -F "[astro]" serial.log
+          grep -F "[JARVIS_SPEAK]:" serial.log
+          rm -f serial.log

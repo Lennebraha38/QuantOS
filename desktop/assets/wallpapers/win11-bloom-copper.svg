@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bgMica" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#141821"/>
+      <stop offset="55%" stop-color="#1A202C"/>
+      <stop offset="100%" stop-color="#10131A"/>
+    </linearGradient>
+    <linearGradient id="fold1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60CDFF" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#0078D4" stop-opacity="0.03"/>
+    </linearGradient>
+    <linearGradient id="fold2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D1925C" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#1C1F26" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bgMica)"/>
+  <path d="M960 540 C680 180, 520 420, 660 720 C780 940, 1140 860, 960 540 Z" fill="url(#fold1)" stroke="#60CDFF" stroke-opacity="0.18"/>
+  <path d="M960 540 C1240 160, 1420 420, 1250 740 C1120 960, 780 860, 960 540 Z" fill="url(#fold2)" stroke="#D1925C" stroke-opacity="0.20"/>
+  <path d="M960 540 C820 120, 1100 120, 960 540 Z" fill="url(#fold1)" stroke="#EAE7E1" stroke-opacity="0.12"/>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "name": "quantos",
+  "version": "1.0.0",
+  "description": "QuantOS — Kuantum Hesaplama, Astrofizik Gözlemevi, BB84 Kriptografi ve Sesli J.A.R.V.I.S. İşletim Sistemi",
+  "type": "module",
+  "main": "server.mjs",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node scripts/verify-integrity.mjs && npm test"
+  },
+  "dependencies": {}
+}
