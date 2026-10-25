@@ -186,6 +186,14 @@ test('QuantOS HTTP Server: CSP header, health, delta CPU system telemetry, QRNG,
     const localRes = await fetch(`${base}/api/proxy?url=http://localhost:8080/`);
     assert.equal(localRes.status, 403);
 
+    // Search API Test
+    const searchRes = await fetch(`${base}/api/search?q=quantos+os`);
+    assert.equal(searchRes.status, 200);
+    const searchJson = await searchRes.json();
+    assert.equal(searchJson.ok, true);
+    assert.ok(Array.isArray(searchJson.results));
+    assert.ok(searchJson.results.length > 0);
+
     const travRes = await fetch(`${base}/../../etc/passwd`);
     assert.ok([400, 403, 404].includes(travRes.status));
   } finally {

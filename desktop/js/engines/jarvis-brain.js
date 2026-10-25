@@ -1407,8 +1407,10 @@ export class JarvisBrain {
     }
   }
 
-  startListening({ wakeWordMode = false, continuous = false, lang } = {}) {
-    this.wakeWordMode = Boolean(wakeWordMode || continuous || this._config.wakeWordEnabled);
+  startListening({ directCommand = false, wakeWordMode = false, continuous = false, lang } = {}) {
+    // Doğrudan tıklamayla dinlemede uyandırma kelimesi zorunluluğu aranmaz
+    this.wakeWordMode = directCommand ? false : Boolean(wakeWordMode || continuous || this._config.wakeWordEnabled);
+    this._latestHeardText = '';
     const effectiveLang = lang || this._config.lang || 'tr-TR';
 
     if (typeof window === 'undefined') {
@@ -1419,12 +1421,15 @@ export class JarvisBrain {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
       this.listening = false;
-      this._setState('idle', { error: 'speech-recognition-unsupported' });
+      this._setState('idle', {
+        error: 'Tarayıcınız Web Speech API ses tanıma protokolünü desteklemiyor. Lütfen metin komutunu kullanın veya Chrome/Edge tarayıcısında mikrofon iznini etkinleştirin.'
+      });
       return false;
     }
 
     if (this._recognition) {
       try {
+        this._recognition.onend = null;
         this._recognition.stop();
       } catch {
         // Sessizce geç
@@ -1439,8 +1444,9 @@ export class JarvisBrain {
 
     rec.onstart = () => {
       this.listening = true;
+      this._latestHeardText = '';
       this.ctx.sound?.playJarvisWake?.();
-      this._setState('listening');
+      this._setState('listening', { interimTranscript: 'Sizi dinliyorum efendim...' });
     };
 
     rec.onresult = (event) => {
@@ -1456,12 +1462,15 @@ export class JarvisBrain {
         }
       }
 
-      if (interim) {
-        this._setState('listening', { interimTranscript: interim.trim() });
+      const speechText = (finalTranscript.trim() || interim.trim());
+      if (speechText) {
+        this._latestHeardText = speechText;
+        this._setState('listening', { interimTranscript: `[Duyulan]: ${speechText}` });
       }
 
       const trimmed = finalTranscript.trim();
       if (trimmed) {
+        this._latestHeardText = '';
         const lower = foldASCII(trimmed);
         if (!this.wakeWordMode || lower.includes(this.wakeWord)) {
           this.processCommand(trimmed, { speak: true });
@@ -1469,10 +1478,17 @@ export class JarvisBrain {
       }
     };
 
-    rec.onerror = () => {
+    rec.onerror = (err) => {
+      const errCode = err?.error || 'bilinmeyen';
+      let trErr = 'Mikrofon hatası: ' + errCode;
+      if (errCode === 'not-allowed') {
+        trErr = 'Mikrofon erişim izni verilmedi. Lütfen adres çubuğundan mikrofon iznini onaylayın.';
+      } else if (errCode === 'no-speech') {
+        trErr = 'Herhangi bir ses algılanmadı efendim.';
+      }
+      this._setState('idle', { error: trErr });
       if (!this.wakeWordMode) {
         this.listening = false;
-        this._setState('idle');
       }
     };
 
@@ -1485,6 +1501,16 @@ export class JarvisBrain {
           // Yeniden başlatılamadı
         }
       }
+
+      // Kullanıcı konuşmayı bitirdiyse ve metin final olamadan durduysa çalıştır
+      if (this._latestHeardText && this._latestHeardText.trim()) {
+        const pending = this._latestHeardText.trim();
+        this._latestHeardText = '';
+        this._setState('processing', { detail: `İşleniyor: "${pending}"` });
+        this.processCommand(pending, { speak: true });
+        return;
+      }
+
       this.listening = false;
       if (this.state === 'listening') {
         this._setState('idle');
@@ -1514,6 +1540,16 @@ export class JarvisBrain {
       }
       this._recognition = null;
     }
+
+    // Kullanıcı mikrofon butonunu kapattığında yakalanmış son metni hemen işle
+    if (this._latestHeardText && this._latestHeardText.trim()) {
+      const pending = this._latestHeardText.trim();
+      this._latestHeardText = '';
+      this._setState('processing', { detail: `İşleniyor: "${pending}"` });
+      this.processCommand(pending, { speak: true });
+      return;
+    }
+
     if (this.state === 'listening') {
       this._setState('idle');
     }
@@ -1524,6 +1560,6 @@ export class JarvisBrain {
       this.stopListening();
       return false;
     }
-    return this.startListening(options);
+    return this.startListening({ directCommand: true, ...options });
   }
 }

@@ -13,7 +13,7 @@
 
 ### 1. Tam Windows 11 Masaüstü Deneyimi (DWM & Kabuk)
 - **Önyükleme -> Kilit Ekranı -> Oturum Açma Akışı**: UEFI/Limine önyükleme ekranı, canlı astronomik/kuantum durum özetli Windows 11 Kilit Ekranı ve araştırmacı giriş ekranı.
-- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
+- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **çift tıklama debounce koruması** (çift tıklamada tek pencere açılışı ve odağa alma) ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
 - **Sanal Masaüstleri & Görev Görünümü (Task View)**: Çoklu çalışma alanları (*Komuta*, *Kuantum AR-GE*, *Astrofizik Gözlemevi*) arasında anında geçiş.
 - **Ortalanmış Görev Çubuğu & Başlat Menüsü**: Anlık küresel arama (`Ctrl+K`), sabitlenmiş uygulamalar, son AR-GE dosyaları, güç menüsü (Kilitle, Uyku, Yeniden Başlat, Kapat).
 - **Hızlı Ayarlar, Bildirim Merkezi, Takvim, Widget'lar ve Pano Geçmişi**: Gerçek ekran parlaklığı/gece ışığı filtresi, ses kontrolü, J.A.R.V.I.S. sürekli dinleme modu, sağ tık bağlam menüsü ve `Ctrl+Shift+V` pano geçmişi.
@@ -24,7 +24,8 @@
   4. **Quantro Vellum Açık** (`vellum-light` — uzun form makale ve belge okuma/yazma yüzeyi)
 
 ### 2. J.A.R.V.I.S. Sesli Yapay Zekâ ve Sistem Komutanı
-- **Çift Yönlü Türkçe ve İngilizce Ses Etkileşimi**: Tarayıcı Web Speech API (`SpeechRecognition` + `SpeechSynthesis`), Web Audio API gerçek zamanlı Arc-Reactor frekans görselleştiricisi ve yerel işletim sistemi TTS köprüsü (`/api/tts` -> `termux-tts-speak` / `espeak-ng`, ayrıca QEMU seri hat üzerinden `scripts/jarvis-voice-bridge.py`).
+- **Çift Yönlü Türkçe ve İngilizce Ses Etkileşimi**: Tarayıcı Web Speech API (`SpeechRecognition` + `SpeechSynthesis`), Web Audio API gerçek zamanlı Arc-Reactor frekans görselleştiricisi, **mikrofon ara ses önbelleği** (konuşup durdurulduğunda hiçbir sözcüğü kaybetmeden anında işleme ve sesli yanıtlama) ve yerel işletim sistemi TTS köprüsü (`/api/tts` -> ElevenLabs API, `termux-tts-speak`, `espeak-ng`, QEMU seri hat `scripts/jarvis-voice-bridge.py`).
+- **Gelişmiş Sohbet ve Asistan Zekâsı**: Hem bilimsel hem gündelik konularda zengin Türkçe sohbet, espri, hava/saat bilgisi, genel kültür ve sistem tanılama.
 - **Doğrudan İşletim Sistemi ve Laboratuvar Kontrolü**:
   - *"Jarvis kuantum laboratuvarını aç"* / *"Jarvis pencereleri yan yana diz"* / *"Jarvis tüm pencereleri küçült"*
   - *"Jarvis Bell durumu oluştur"* -> 2 kübitlik $|\Phi^+\rangle = \frac{|00\rangle + |11\rangle}{\sqrt{2}}$ dolanıklık devresini kurar, 1024 ölçüm alır ve sonucu sesli raporlar.
@@ -41,11 +42,11 @@
 | **Quantro AstroLab** | `astrolab` | Kerr/Schwarzschild kara delik mercekleme, Velocity-Verlet N-cisim yörünge mekaniği, Simpson integralli $\Lambda$CDM kozmoloji, sesli LIGO kütleçekim dalgası (chirp) |
 | **Q-Vault (BB84 & QRNG)** | `qvault` | BB84 kuantum kriptografi (QBER analizi), canlı ANU kuantum vakum rastgelelik motoru ve WebCrypto AES-256-GCM dosya şifreleme |
 | **Dosya Gezgini** | `explorer` | Kalıcı sanal dosya sistemi (`C:\QuantOS`, `C:\Users\Quantro\...`), sekme/klasör/arama/kopyala/taşı |
-| **QuantShell Terminal** | `terminal` | Çok sekmeli Windows Terminal / QuantShell (`qsim`, `bb84`, `qrng`, `blackhole`, `cosmo`, `jarvis`, `neofetch`, `sysinfo` vb. 30+ komut) |
+| **QuantShell Terminal** | `terminal` | Çok sekmeli gerçek Linux Bash kabuğu (140+ Bash/Linux komutu, canlı `cd` dizin takibi, sunucu uç noktası `/api/terminal/exec`) + dahili `qsim`, `bb84`, `qrng`, `blackhole`, `cosmo`, `jarvis` bilimsel motorları |
 | **QuantCode Studio** | `code` | VFS entegreli çok sekmeli kod düzenleyici, JS çalıştırıcı, QASM aktarıcı ve Markdown önizleme |
 | **Görev Yöneticisi** | `taskmgr` | Canlı süreç yönetimi + gerçek zamanlı FPS, Bellek, Host Linux Çekirdek Yükü ve QPU durum vektörü grafikleri |
-| **Ayarlar** | `settings` | Sistem, Kişiselleştirme (4 tema + duvar kağıtları), Ses/TTS, Ağ/QRNG, Güvenlik, J.A.R.V.I.S. AI ve Hakkında |
-| **Quantro Edge Tarayıcı** | `browser` | Quantro AR-GE bilgi portalı, kuantum/astrofizik sözlüğü, makale arşivi ve sekme yönetimi |
+| **Ayarlar** | `settings` | Sistem, Kişiselleştirme (4 tema + duvar kağıtları), Ses/TTS (ElevenLabs/OS), Ağ/QRNG, Güvenlik, J.A.R.V.I.S. AI ve Hakkında |
+| **Quantro Edge Tarayıcı** | `browser` | Gerçek web tarayıcısı: Google Custom Search API, Serper API ve DuckDuckGo motorlu gerçek web araması, SSRF korumalı canlı web proxy'si, Omnibox, Google ana sayfası ve `⚙️ API` ayarları |
 | **Bilimsel Hesap Makinesi** | `calculator` | Standart/Bilimsel mod, CODATA 2022 fizik sabitleri ($c, h, \hbar, G, k_B, M_\odot$) ve birim dönüştürücü |
 | **Not Defteri & AR-GE Günlüğü** | `notepad` | Çok sekmeli Markdown/metin editörü, Vellum okuma yüzeyi ve VFS kaydı |
 | **Spektrum & Çizim Stüdyosu** | `spectrum` | Elementel astronomik tayf çizgileri (`H, He, Na, Ca II, Fe, O III`) + Doppler kırmızıya kayma ($z$) analizörü ve çizim tuvali |

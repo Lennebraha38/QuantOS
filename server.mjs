@@ -751,6 +751,151 @@ function handleApiSystem(res) {
   });
 }
 
+async function handleApiSearch(urlObj, req, res) {
+  const query = (urlObj.searchParams.get('q') || '').trim();
+  if (!query) {
+    sendJson(res, 400, { ok: false, error: 'Arama sorgusu (q) boş olamaz.' });
+    return;
+  }
+
+  const provider = (urlObj.searchParams.get('provider') || 'auto').toLowerCase();
+  const apiKey = (urlObj.searchParams.get('apiKey') || process.env.GOOGLE_SEARCH_API_KEY || process.env.SERPER_API_KEY || '').trim();
+  const cx = (urlObj.searchParams.get('cx') || process.env.GOOGLE_SEARCH_CX || '').trim();
+
+  // 1) Google Custom Search JSON API
+  if ((provider === 'google' || provider === 'auto') && apiKey && cx) {
+    try {
+      const gUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(query)}&num=10&hl=tr`;
+      const gResp = await fetch(gUrl, { signal: AbortSignal.timeout(12000) });
+      if (gResp.ok) {
+        const data = await gResp.json();
+        const items = (data.items || []).map((it) => ({
+          title: it.title || '',
+          link: it.link || '',
+          snippet: it.snippet || '',
+          displayUrl: it.displayLink || it.link || ''
+        }));
+        sendJson(res, 200, {
+          ok: true,
+          provider: 'google-api',
+          query,
+          totalResults: data.searchInformation?.totalResults || String(items.length),
+          results: items
+        });
+        return;
+      }
+    } catch (gErr) {
+      console.warn('[QuantOS Search] Google API uyarısı:', gErr.message);
+    }
+  }
+
+  // 2) Serper.dev Google Search API
+  if ((provider === 'serper' || provider === 'auto') && apiKey && !cx) {
+    try {
+      const sResp = await fetch('https://api.serper.dev/search', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ q: query, gl: 'tr', hl: 'tr' }),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (sResp.ok) {
+        const data = await sResp.json();
+        const items = (data.organic || []).map((it) => ({
+          title: it.title || '',
+          link: it.link || '',
+          snippet: it.snippet || '',
+          displayUrl: it.link ? new URL(it.link).hostname : ''
+        }));
+        sendJson(res, 200, {
+          ok: true,
+          provider: 'serper-api',
+          query,
+          results: items
+        });
+        return;
+      }
+    } catch (sErr) {
+      console.warn('[QuantOS Search] Serper API uyarısı:', sErr.message);
+    }
+  }
+
+  // 3) Canlı DuckDuckGo Arama Çekimi (API Anahtarsız Yedekleme)
+  try {
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const ddgResp = await fetch(ddgUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 QuantOS/1.0',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (ddgResp.ok) {
+      const html = await ddgResp.text();
+      const results = [];
+      const regex = /<a class="result__url" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+      let m;
+      while ((m = regex.exec(html)) !== null && results.length < 12) {
+        let rawLink = m[1];
+        if (rawLink.includes('uddg=')) {
+          const match = rawLink.match(/uddg=([^&]+)/);
+          if (match) rawLink = decodeURIComponent(match[1]);
+        }
+        const snippet = m[3].replace(/<[^>]+>/g, '').trim();
+        const cleanTitle = m[2].replace(/<[^>]+>/g, '').trim() || rawLink;
+        results.push({
+          title: cleanTitle,
+          link: rawLink,
+          snippet,
+          displayUrl: rawLink.startsWith('http') ? new URL(rawLink).hostname : rawLink
+        });
+      }
+
+      if (results.length > 0) {
+        sendJson(res, 200, {
+          ok: true,
+          provider: 'duckduckgo-live',
+          query,
+          results
+        });
+        return;
+      }
+    }
+  } catch (ddgErr) {
+    console.warn('[QuantOS Search] DuckDuckGo uyarısı:', ddgErr.message);
+  }
+
+  // 4) Doğrudan Arama Bağlantıları
+  sendJson(res, 200, {
+    ok: true,
+    provider: 'web-direct',
+    query,
+    results: [
+      {
+        title: `Google'da Ara: "${query}"`,
+        link: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+        snippet: `Google arama motorunda "${query}" ifadesini arayın ve sonuçları Quantro Edge ile görüntüleyin.`,
+        displayUrl: 'google.com'
+      },
+      {
+        title: `DuckDuckGo'da Ara: "${query}"`,
+        link: `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+        snippet: `Gizlilik odaklı DuckDuckGo arama motoru sonuçları.`,
+        displayUrl: 'duckduckgo.com'
+      },
+      {
+        title: `Wikipedia Türkçe: "${query}"`,
+        link: `https://tr.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(query)}`,
+        snippet: `Vikipedi özgür ansiklopedi üzerinde "${query}" araması.`,
+        displayUrl: 'tr.wikipedia.org'
+      }
+    ]
+  });
+}
+
 async function serveStaticFile(req, res, pathname, desktopRoot) {
   let decodedPath;
   try {
@@ -893,6 +1038,15 @@ export function createQuantOSServer(options = {}) {
           return;
         }
         await handleApiProxy(urlObj, req, res);
+        return;
+      }
+
+      if (pathname === '/api/search') {
+        if (method !== 'GET' && method !== 'HEAD') {
+          sendJson(res, 405, { ok: false, error: 'Yalnızca GET ve HEAD desteklenir.' });
+          return;
+        }
+        await handleApiSearch(urlObj, req, res);
         return;
       }
 

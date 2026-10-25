@@ -201,19 +201,24 @@ export function mountJarvisApp(container, osContext, args = {}) {
   });
 
   let currentState = 'idle';
-  const unsub = jarvis.onStateChange((st, detail = '') => {
+  const unsub = jarvis.onStateChange((st, detail = '', payload = {}) => {
     const state = typeof st === 'object' && st ? st.state : st;
-    const msgDetail = typeof st === 'object' && st ? st.detail || detail : detail;
+    const msgDetail =
+      (typeof st === 'object' && st ? (st.detail || st.interimTranscript || st.error) : null) ||
+      (payload && typeof payload === 'object' ? (payload.interimTranscript || payload.error || payload.detail) : null) ||
+      detail;
+
     currentState = state;
     const labels = {
       idle: 'HAZIR',
-      listening: 'DİNLİYOR',
-      processing: 'ANALİZ EDİLİYOR',
-      speaking: 'KONUŞUYOR',
+      listening: 'DİNLİYOR 🎙️',
+      processing: 'ANALİZ EDİLİYOR ⚙️',
+      speaking: 'KONUŞUYOR 🔊',
     };
     statePill.textContent = labels[state] || 'HAZIR';
-    listenLbl.textContent = state === 'listening' ? 'Dinlemeyi Durdur' : 'Sesli Dinle';
+    listenLbl.textContent = state === 'listening' ? 'Dinlemeyi Durdur / Gönder' : 'Sesli Dinle';
     if (msgDetail) interimEl.textContent = msgDetail;
+    else if (state === 'idle') interimEl.textContent = 'Mikrofon hazır';
     renderHistory();
   });
 

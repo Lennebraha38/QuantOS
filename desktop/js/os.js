@@ -336,11 +336,18 @@ async function bootstrapQuantOS() {
     }
   }
 
-  let lastDesktopClickTime = 0;
-  let lastDesktopClickApp = null;
+  let lastLaunchTime = 0;
+  let lastLaunchApp = null;
 
   function launchDesktopApp(appId) {
     if (!appId) return;
+    const now = performance.now();
+    // 500ms debounce guard prevents duplicate concurrent triggers
+    if (lastLaunchApp === appId && now - lastLaunchTime < 500) {
+      return;
+    }
+    lastLaunchTime = now;
+    lastLaunchApp = appId;
     setDesktopSelection(null);
     osContext.openApp(appId);
   }
@@ -349,20 +356,7 @@ async function bootstrapQuantOS() {
     const btn = e.target.closest('[data-app]');
     if (!btn) return;
     e.stopPropagation();
-    const appId = btn.dataset.app;
-    const now = performance.now();
-    const isDouble = lastDesktopClickApp === appId && now - lastDesktopClickTime < 480;
-
-    lastDesktopClickTime = now;
-    lastDesktopClickApp = appId;
-
-    if (isDouble) {
-      lastDesktopClickTime = 0;
-      lastDesktopClickApp = null;
-      launchDesktopApp(appId);
-    } else {
-      setDesktopSelection(appId);
-    }
+    setDesktopSelection(btn.dataset.app);
   });
 
   $('#desktop-icons').addEventListener('dblclick', (e) => {
@@ -370,6 +364,25 @@ async function bootstrapQuantOS() {
     if (!btn) return;
     e.stopPropagation();
     launchDesktopApp(btn.dataset.app);
+  });
+
+  // Dokunmatik cihazlarda çift dokunma algılayıcı
+  let lastTouchTime = 0;
+  let lastTouchApp = null;
+  $('#desktop-icons').addEventListener('pointerup', (e) => {
+    if (e.pointerType !== 'touch') return;
+    const btn = e.target.closest('[data-app]');
+    if (!btn) return;
+    const appId = btn.dataset.app;
+    const now = performance.now();
+    if (lastTouchApp === appId && now - lastTouchTime < 420) {
+      lastTouchTime = 0;
+      lastTouchApp = null;
+      launchDesktopApp(appId);
+    } else {
+      lastTouchTime = now;
+      lastTouchApp = appId;
+    }
   });
 
   $('#desktop-icons').addEventListener('keydown', (e) => {

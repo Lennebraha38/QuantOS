@@ -83,6 +83,19 @@ export class WindowManager {
   }
 
   openWindow(appDef, args = {}, osContext = {}) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (this._lastOpenApp === appDef.id && now - (this._lastOpenTime || 0) < 360) {
+      for (const [id, w] of this.windows) {
+        if (w.appId === appDef.id && w.desktop === this.activeDesktop) {
+          if (w.minimized) this.restoreWindow(id);
+          this.focusWindow(id);
+          return id;
+        }
+      }
+    }
+    this._lastOpenApp = appDef.id;
+    this._lastOpenTime = now;
+
     if (appDef.singleton) {
       for (const [id, w] of this.windows) {
         if (w.appId === appDef.id && w.desktop === this.activeDesktop) {

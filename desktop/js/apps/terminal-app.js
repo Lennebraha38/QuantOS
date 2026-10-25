@@ -7,10 +7,15 @@ import { simulateBB84, generateQRNGBytes, computeByteStats } from '../engines/bb
 import { blackHoleMetrics, cosmologyMetrics, siderealAndJulian } from '../engines/astro-engine.js';
 
 const COMMAND_LIST = [
-  'help', 'clear', 'ls', 'dir', 'cd', 'pwd', 'cat', 'mkdir', 'touch', 'write', 'rm',
-  'cp', 'mv', 'find', 'sysinfo', 'neofetch', 'ps', 'kill', 'qsim', 'bb84', 'qrng',
-  'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'whoami', 'date', 'echo',
-  'uname', 'git', 'python3', 'node', 'npm', 'make', 'curl', 'grep', 'df', 'free', 'top'
+  'help', 'clear', 'cls', 'qsim', 'bb84', 'qrng', 'blackhole', 'cosmo', 'sidereal', 'jarvis', 'theme', 'open', 'sysinfo', 'neofetch', 'vfs',
+  // Linux Sistem, Dosya ve Ağ Komutları
+  'ls', 'dir', 'cd', 'pwd', 'cat', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'chmod', 'chown', 'find', 'grep', 'diff',
+  'head', 'tail', 'less', 'more', 'wc', 'sort', 'uniq', 'tr', 'sed', 'awk', 'cut', 'tee', 'echo', 'printf', 'date',
+  'whoami', 'id', 'uname', 'hostname', 'uptime', 'w', 'who', 'ps', 'top', 'kill', 'killall', 'pkill',
+  'df', 'du', 'free', 'lsof', 'netstat', 'ss', 'ip', 'ifconfig', 'ping', 'curl', 'wget', 'traceroute',
+  'git', 'python3', 'python', 'node', 'npm', 'npx', 'pip', 'pip3', 'make', 'gcc', 'clang', 'ld',
+  'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'which', 'whereis', 'type', 'alias', 'export', 'env', 'printenv',
+  'bash', 'sh', 'nano', 'vim', 'history', 'stat', 'file', 'readlink', 'basename', 'dirname'
 ];
 
 export function mountTerminalApp(container, osContext) {
@@ -19,7 +24,7 @@ export function mountTerminalApp(container, osContext) {
     {
       id: 1,
       title: 'QuantShell & Bash',
-      cwd: 'C:/Users/Quantro',
+      cwd: 'C:/QuantOS',
       hostCwd: '/root/projects/QuantOS',
       lines: [],
       history: [],
@@ -31,9 +36,9 @@ export function mountTerminalApp(container, osContext) {
 
   function bootLines() {
     return [
-      { cls: 'ok', text: 'QuantOS PowerShell & Bash Çift Katmanlı Terminal [Sürüm 24H2 · AArch64]' },
-      { cls: '', text: 'Yerleşik kuantum/astrofizik komutları ve tüm Linux sistem araçları (ls, uname, git, python3, ...) doğrudan çalıştırılabilir.' },
-      { cls: 'muted', text: 'Komut listesi için "help", J.A.R.V.I.S. için "jarvis <soru>" yazabilirsiniz.' },
+      { cls: 'ok', text: 'QuantOS PowerShell & Real Bash Terminal [Sürüm 24H2 · AArch64]' },
+      { cls: '', text: 'Tüm Linux sistem komutları (ls, cd, git, python3, make, grep, ...) ve QuantOS kuantum/astrofizik komutları aktiftir.' },
+      { cls: 'muted', text: 'Komut kataloğu için "help", J.A.R.V.I.S. için "jarvis <soru>", VFS için "vfs ls" yazabilirsiniz.' },
     ];
   }
   tabs[0].lines = bootLines();
@@ -44,13 +49,13 @@ export function mountTerminalApp(container, osContext) {
       <div class="terminal-screen" id="tm-screen">
         <div id="tm-lines"></div>
         <div class="term-input-row">
-          <span class="term-prompt" id="tm-prompt">PS C:/Users/Quantro&gt;</span>
+          <span class="term-prompt" id="tm-prompt">PS /root/projects/QuantOS&gt;</span>
           <input type="text" class="term-input" id="tm-input" autocomplete="off" spellcheck="false" aria-label="Terminal Komut Satırı" />
         </div>
       </div>
       <div class="app-statusbar">
-        <span>Kabuk: QuantShell UTF-8 (tr-TR)</span>
-        <span id="tm-status">Sekme: 1 · Geçmiş için ↑/↓, Tamamlama için Tab</span>
+        <span>Kabuk: Linux Bash &amp; QuantShell (UTF-8)</span>
+        <span id="tm-status">Geçmiş için ↑/↓, 140+ Komut Tamamlama için Tab</span>
       </div>
     </div>
   `;
@@ -63,41 +68,34 @@ export function mountTerminalApp(container, osContext) {
 
   const curTab = () => tabs.find((t) => t.id === activeTabId) || tabs[0];
 
-  function resolveRel(cwd, target) {
-    if (!target) return cwd;
-    if (/^[cC]:/.test(target)) return vfs.normalizePath(target);
-    if (target === '..') {
-      const clean = cwd.replace(/\/+$/, '');
-      const i = clean.lastIndexOf('/');
-      return i > 2 ? clean.slice(0, i) : 'C:/';
-    }
-    if (target === '.') return cwd;
-    return vfs.normalizePath(`${cwd.replace(/\/$/, '')}/${target}`);
-  }
-
   function render() {
     const t = curTab();
     tabsEl.innerHTML =
       tabs
         .map(
           (tb) =>
-            `<button type="button" class="app-tab ${tb.id === t.id ? 'active' : ''}" data-tid="${tb.id}">${tb.title}</button>`
+            `<button type="button" class="app-tab ${tb.id === t.id ? 'active' : ''}" data-tid="${tb.id}">${escapeHtml(tb.title)}</button>`
         )
         .join('') +
       `<button type="button" class="btn btn-sm btn-ghost" id="tm-add-tab" style="margin-left:4px;">+ Sekme</button>`;
 
     linesEl.innerHTML = t.lines
       .map((l) => {
-        const safe = String(l.text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+        const safe = escapeHtml(String(l.text));
         return `<div class="term-line ${l.cls || ''}">${safe}</div>`;
       })
       .join('');
 
-    promptEl.textContent = `PS ${t.cwd}>`;
+    const displayPrompt = t.hostCwd || t.cwd || '/root/projects/QuantOS';
+    promptEl.textContent = `PS ${displayPrompt}>`;
     screenEl.scrollTop = screenEl.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function pushOut(t, text, cls = '') {
@@ -107,7 +105,9 @@ export function mountTerminalApp(container, osContext) {
   async function execLine(raw) {
     const t = curTab();
     const line = raw.trim();
-    pushOut(t, `PS ${t.cwd}> ${line}`, 'cmd');
+    const currentPath = t.hostCwd || t.cwd || '/root/projects/QuantOS';
+    pushOut(t, `PS ${currentPath}> ${line}`, 'cmd');
+
     if (!line) {
       render();
       return;
@@ -125,135 +125,34 @@ export function mountTerminalApp(container, osContext) {
           pushOut(
             t,
             [
-              'Kullanılabilir QuantOS Komutları:',
-              '  Dosya/VFS : ls, dir, cd <yol>, pwd, cat <dosya>, mkdir <ad>, touch <ad>, write <ad> <metin>, rm <yol>, find <sorgu>',
-              '  Sistem    : sysinfo, neofetch, ps, kill <winId>, theme <ink-copper|jarvis-holo|win11-mica|vellum-light>, open <appId>',
-              '  Bilimsel  : qsim [bell|ghz|grover2], bb84 [--eve], qrng, blackhole <M_gunes>, cosmo <z>, sidereal',
-              '  Yapay Zekâ: jarvis <komut veya soru>',
+              'QuantOS Çift Katmanlı Terminal Komut Rehberi:',
+              '  Gerçek Sistem (Linux/Bash):',
+              '    ls, dir, cd <dizin>, pwd, cat <dosya>, mkdir <dizin>, rm <dosya>, cp, mv, touch, chmod',
+              '    uname -a, whoami, date, echo, ps, top, df -h, free -m, grep, find, which, env',
+              '    git <komut>, python3 <dosya>, node <dosya>, make <hedef>, curl <url>, wget <url>',
+              '  QuantOS Kuantum & Astrofizik (İstemci İçi Anlık Simülasyon):',
+              '    qsim [bell|ghz|grover2]      : Kuantum durum vektörü simülatörü ve 1024 ölçüm histogramı',
+              '    bb84 [--eve]                 : BB84 QKD kuantum anahtar dağıtımı (dinleyici tespiti)',
+              '    qrng [adet]                  : Kuantum rastgele sayı üreticisi ve entropi analizi',
+              '    blackhole <kütle_M☉>         : Schwarzschild ve Kerr olay ufku hesaplayıcısı',
+              '    cosmo <z>                    : ΛCDM kozmolojisi evren yaşı ve mesafeleri',
+              '    sidereal                     : Kayseri Gözlemevi yıldız zamanı ve yörünge hızı',
+              '  Yapay Zekâ & Masaüstü Yönetimi:',
+              '    jarvis <soru veya komut>     : J.A.R.V.I.S. yapay zekâ asistanına doğrudan danışma',
+              '    theme <ink-copper|jarvis-holo|win11-mica|vellum-light> : Masaüstü temasını değiştir',
+              '    open <appId>                 : Pencere başlat (qlab, astrolab, browser, code, ...)',
+              '    vfs [ls|read|write|mkdir|rm] : Şifreli tarayıcı VFS sanal dosya sistemini incele',
+              '    clear / cls                  : Terminal ekranını temizle'
             ].join('\n'),
             'ok'
           );
           break;
+
         case 'clear':
         case 'cls':
           t.lines = [];
           break;
-        case 'pwd':
-          pushOut(t, t.cwd);
-          break;
-        case 'whoami':
-          pushOut(t, 'quantro\\bas-arastirmaci (SID: S-1-5-21-QUANTRO-38)');
-          break;
-        case 'date':
-          pushOut(t, new Date().toLocaleString('tr-TR', { dateStyle: 'full', timeStyle: 'long' }));
-          break;
-        case 'echo':
-          pushOut(t, argStr);
-          break;
-        case 'ls':
-        case 'dir': {
-          const target = resolveRel(t.cwd, rest[0]);
-          const items = vfs.list(target);
-          if (!items.length) pushOut(t, '(boş dizin)');
-          else {
-            const rows = items.map(
-              (i) => `${i.type === 'dir' ? '<DIR> ' : '      '} ${String(i.size || 0).padStart(7)} B  ${i.name}`
-            );
-            pushOut(t, rows.join('\n'));
-          }
-          break;
-        }
-        case 'cd': {
-          const next = resolveRel(t.cwd, rest[0] || 'C:/Users/Quantro');
-          const st = vfs.stat(next);
-          if (!st || st.type !== 'dir') pushOut(t, `Dizin bulunamadı: ${next}`, 'err');
-          else t.cwd = next;
-          break;
-        }
-        case 'cat':
-        case 'type': {
-          const p = resolveRel(t.cwd, rest[0]);
-          pushOut(t, vfs.read(p));
-          break;
-        }
-        case 'mkdir': {
-          const p = resolveRel(t.cwd, rest[0]);
-          vfs.mkdir(p);
-          pushOut(t, `Klasör oluşturuldu: ${p}`, 'ok');
-          break;
-        }
-        case 'touch': {
-          const p = resolveRel(t.cwd, rest[0]);
-          vfs.write(p, '');
-          pushOut(t, `Dosya oluşturuldu: ${p}`, 'ok');
-          break;
-        }
-        case 'write': {
-          const p = resolveRel(t.cwd, rest[0]);
-          vfs.write(p, rest.slice(1).join(' '));
-          pushOut(t, `Yazıldı: ${p}`, 'ok');
-          break;
-        }
-        case 'rm':
-        case 'del': {
-          const p = resolveRel(t.cwd, rest[0]);
-          vfs.remove(p);
-          pushOut(t, `Silindi: ${p}`, 'ok');
-          break;
-        }
-        case 'cp':
-        case 'copy': {
-          vfs.copy(resolveRel(t.cwd, rest[0]), resolveRel(t.cwd, rest[1]));
-          pushOut(t, 'Kopyalandı.', 'ok');
-          break;
-        }
-        case 'mv':
-        case 'ren': {
-          vfs.rename(resolveRel(t.cwd, rest[0]), resolveRel(t.cwd, rest[1]));
-          pushOut(t, 'Taşındı / yeniden adlandırıldı.', 'ok');
-          break;
-        }
-        case 'find': {
-          const hits = vfs.search(argStr || '', t.cwd);
-          pushOut(t, hits.length ? hits.map((h) => h.path).join('\n') : 'Eşleşme yok.');
-          break;
-        }
-        case 'ps':
-        case 'tasklist': {
-          const wins = osContext.wm.getAllWindows();
-          pushOut(
-            t,
-            wins.length
-              ? wins.map((w) => `${w.id.padEnd(8)} Masaüstü:${w.desktop + 1}  ${w.appId.padEnd(11)} ${w.title}`).join('\n')
-              : 'Açık pencere süreci yok.'
-          );
-          break;
-        }
-        case 'kill':
-        case 'taskkill':
-          osContext.closeApp(rest[0]);
-          pushOut(t, `Süreç kapatma sinyali gönderildi: ${rest[0]}`, 'ok');
-          break;
-        case 'sysinfo':
-        case 'neofetch': {
-          const st = osContext.getSystemStatus();
-          const usage = vfs.getStorageUsage();
-          pushOut(
-            t,
-            [
-              '   ██████╗ ██╗   ██╗   QuantOS 24H2 (Quantro AR-GE Sürümü)',
-              '  ██╔═══██╗██║   ██║   ----------------------------------------',
-              '  ██║   ██║██║   ██║   Çekirdek   : AArch64 Limine UEFI + WebDWM Hibrit',
-              '  ██║▄▄ ██║██║   ██║   Asistan    : J.A.R.V.I.S. Sesli Bilimsel Komutan',
-              `  ╚██████╔╝╚██████╔╝   Aktif Tema : ${st.theme}`,
-              `   ╚══▀▀═╝  ╚═════╝    Pencereler : ${st.openWindows} açık süreç`,
-              `                       VFS Disk   : ${usage.totalFiles} dosya (${(usage.totalBytes / 1024).toFixed(1)} KB)`,
-              `                       Çalışma    : ${st.uptimeSec} sn`,
-            ].join('\n'),
-            'ok'
-          );
-          break;
-        }
+
         case 'qsim': {
           const name = (rest[0] || 'bell').toLowerCase();
           const fn = QuantumPresets[name] || QuantumPresets.bell;
@@ -269,6 +168,7 @@ export function mountTerminalApp(container, osContext) {
           );
           break;
         }
+
         case 'bb84': {
           const eve = rest.includes('--eve') || rest.includes('eve');
           const r = simulateBB84({ length: 128, eavesdrop: eve });
@@ -279,12 +179,15 @@ export function mountTerminalApp(container, osContext) {
           );
           break;
         }
+
         case 'qrng': {
-          const b = generateQRNGBytes(32);
+          const count = Number(rest[0]) || 32;
+          const b = generateQRNGBytes(Math.min(128, Math.max(8, count)));
           const s = computeByteStats(b);
           pushOut(t, `[QRNG] Entropi=${s.shannonEntropy.toFixed(3)} bit/B · Hex=${s.hex}`, 'ok');
           break;
         }
+
         case 'blackhole': {
           const mass = Number(rest[0]) || 10;
           const bh = blackHoleMetrics(mass, 0);
@@ -295,6 +198,7 @@ export function mountTerminalApp(container, osContext) {
           );
           break;
         }
+
         case 'cosmo': {
           const z = Number(rest[0]) || 1.0;
           const c = cosmologyMetrics({ z });
@@ -305,6 +209,7 @@ export function mountTerminalApp(container, osContext) {
           );
           break;
         }
+
         case 'sidereal': {
           const s = siderealAndJulian(new Date(), 35.4853);
           pushOut(
@@ -314,21 +219,66 @@ export function mountTerminalApp(container, osContext) {
           );
           break;
         }
+
         case 'theme':
           osContext.setTheme(rest[0] || 'ink-copper');
           pushOut(t, `Tema değiştirildi: ${rest[0] || 'ink-copper'}`, 'ok');
           break;
+
         case 'open':
           osContext.openApp(rest[0] || 'qlab');
           pushOut(t, `Uygulama başlatıldı: ${rest[0] || 'qlab'}`, 'ok');
           break;
+
         case 'jarvis': {
           const res = await osContext.jarvis.processCommand(argStr || 'durum raporu', { speak: true });
           pushOut(t, `[J.A.R.V.I.S.] ${res.reply}`, 'ok');
           break;
         }
+
+        case 'vfs': {
+          const sub = (rest[0] || 'ls').toLowerCase();
+          const targetPath = rest[1] || 'C:/Users/Quantro';
+          if (sub === 'ls' || sub === 'dir') {
+            const items = vfs.list(targetPath);
+            const rows = items.map((i) => `${i.type === 'dir' ? '<DIR> ' : '      '} ${String(i.size || 0).padStart(7)} B  ${i.name}`);
+            pushOut(t, rows.length ? rows.join('\n') : '(VFS dizini boş)');
+          } else if (sub === 'cat' || sub === 'read') {
+            pushOut(t, vfs.read(targetPath));
+          } else if (sub === 'write') {
+            vfs.write(targetPath, rest.slice(2).join(' '));
+            pushOut(t, `VFS yazıldı: ${targetPath}`, 'ok');
+          } else if (sub === 'mkdir') {
+            vfs.mkdir(targetPath);
+            pushOut(t, `VFS klasörü oluşturuldu: ${targetPath}`, 'ok');
+          } else {
+            pushOut(t, 'Kullanım: vfs [ls|read|write|mkdir] <yol>', 'muted');
+          }
+          break;
+        }
+
+        case 'neofetch':
+        case 'sysinfo': {
+          const st = osContext.getSystemStatus?.() || {};
+          pushOut(
+            t,
+            [
+              '   ██████╗ ██╗   ██╗   QuantOS 24H2 (Quantro AR-GE Sürümü)',
+              '  ██╔═══██╗██║   ██║   ----------------------------------------',
+              '  ██║   ██║██║   ██║   Çekirdek   : AArch64 Limine UEFI + WebDWM Hibrit',
+              '  ██║▄▄ ██║██║   ██║   Kabuk      : Linux GNU Bash & QuantShell',
+              '  ╚██████╔╝╚██████╔╝   Asistan    : J.A.R.V.I.S. Ultra AI Sesli Komutan',
+              `   ╚══▀▀═╝  ╚═════╝    Aktif Tema : ${st.theme || 'ink-copper'}`,
+              `                       Açık Süreç : ${st.openWindows || 1} pencere`,
+              `                       Çalışma    : ${st.uptimeSec || 0} sn`,
+            ].join('\n'),
+            'ok'
+          );
+          break;
+        }
+
         default: {
-          // Gerçek ana makine terminaline (/bin/bash) bağlanarak çalıştır
+          // TÜM DİĞER KOMUTLAR: Gerçek Linux Ana Makine Terminaline (/bin/bash) bağlanarak çalıştır
           let executedOnHost = false;
           if (typeof fetch === 'function') {
             try {
@@ -341,11 +291,12 @@ export function mountTerminalApp(container, osContext) {
                 }),
                 signal: AbortSignal.timeout(32000)
               });
+
               if (resp.ok) {
                 const data = await resp.json();
                 if (data.cwd) {
                   t.hostCwd = data.cwd;
-                  t.cwd = data.cwd.replace(/^\/root/, 'C:/QuantOS').replace(/\//g, '/');
+                  t.cwd = data.cwd;
                 }
                 if (data.stdout) {
                   pushOut(t, data.stdout.replace(/\n+$/, ''), '');
@@ -359,16 +310,25 @@ export function mountTerminalApp(container, osContext) {
                 executedOnHost = true;
               }
             } catch {
-              // Ağ/sunucu erişilemiyorsa yerel geri dönüşe düş
+              // Sunucu çevrimdışıysa yerel VFS taklidine düş
             }
           }
 
           if (!executedOnHost) {
-            pushOut(
-              t,
-              `Komut tanınmadı: "${cmd}". Yardım için "help", Linux araçları için terminal sunucusunu kontrol edin veya "jarvis ${line}" deneyin.`,
-              'err'
-            );
+            // Çevrimdışı yerel geri dönüş
+            if (cmd === 'pwd') {
+              pushOut(t, t.hostCwd || '/root/projects/QuantOS');
+            } else if (cmd === 'whoami') {
+              pushOut(t, 'root');
+            } else if (cmd === 'date') {
+              pushOut(t, new Date().toLocaleString('tr-TR'));
+            } else {
+              pushOut(
+                t,
+                `Komut çalıştırılamadı: "${cmd}". Çevrimdışı kipte yerleşik komutlar için "help" yazın.`,
+                'err'
+              );
+            }
           }
         }
       }
