@@ -193,6 +193,21 @@ test('QuantOS HTTP Server: CSP header, health, delta CPU system telemetry, QRNG,
     assert.equal(searchJson.ok, true);
     assert.ok(Array.isArray(searchJson.results));
     assert.ok(searchJson.results.length > 0);
+    assert.ok(searchJson.knowledgeCard, 'QuantOS araması Knowledge Card dönmeli');
+
+    // Google Suggest API Test
+    const sugRes = await fetch(`${base}/api/suggest?q=kuan`);
+    assert.equal(sugRes.status, 200);
+    const sugJson = await sugRes.json();
+    assert.equal(sugJson.ok, true);
+    assert.ok(Array.isArray(sugJson.suggestions));
+    assert.ok(sugJson.suggestions.some((s) => s.includes('kuantum')));
+
+    // Smart Math Calculator Card Test
+    const calcRes = await fetch(`${base}/api/search?q=25*4`);
+    assert.equal(calcRes.status, 200);
+    const calcJson = await calcRes.json();
+    assert.equal(calcJson.calculatorCard?.result, '100');
 
     const travRes = await fetch(`${base}/../../etc/passwd`);
     assert.ok([400, 403, 404].includes(travRes.status));

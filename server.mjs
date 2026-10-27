@@ -865,6 +865,362 @@ function handleApiSystem(res) {
   });
 }
 
+const SCIENTIFIC_SUGGESTIONS = [
+  'kuantum mekaniği',
+  'kuantum dolanıklık nedir',
+  'kuantum bilgisayar',
+  'kuantum süperpozisyon',
+  'kuantum kriptografi ve bb84',
+  'kara delik fiziği ve tekillik',
+  'schwarzschild yarıçapı formülü',
+  'kerr metriği ve ergosfer',
+  'ışık hızı neden aşılamaz',
+  'planck sabiti değeri',
+  'hubble sabiti ve evrenin genişlemesi',
+  'james webb uzay teleskobu son keşifler',
+  'hubble uzay teleskobu',
+  'albert einstein genel görelilik',
+  'stephen hawking ışıması',
+  'richard feynman kuantum elektrodinamiği',
+  'niels bohr atom modeli',
+  'max planck kuantum hipotezi',
+  'erciyes gözlemevi kayseri',
+  'andromeda galaksisi çarpışması',
+  'ötegezegenler ve yaşanabilir bölge',
+  'kütleçekim dalgaları ligo virgo',
+  'bell eşitsizliği ve chsh deneyi',
+  'grover veritabanı arama algoritması',
+  'shor asal çarpanlara ayırma algoritması',
+  'deutsch-jozsa algoritması',
+  'friedmann denklemleri',
+  'karanlık madde ve karanlık enerji',
+  'kozmik mikrodalga arka plan ışıması',
+  'standart model parçacık fiziği',
+  'higgs bozonu cern lhc',
+  'quantos bilimsel işletim sistemi',
+  'quantro kuantum ve astrofizik ar-ge'
+];
+
+const LOCAL_KNOWLEDGE_BASE = {
+  kuantum: {
+    title: 'Kuantum Mekaniği',
+    subtitle: 'Teorik Fizik · Doğa Yasaları',
+    description: 'Maddenin ve ışığın atomik ve atom altı düzeylerdeki davranışlarını açıklayan temel doğa teorisi. Süperpozisyon, dalga fonksiyonu çökmesi ve dolanıklık gibi klasik fiziğe aykırı ilkeler içerir.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Hydrogen_Density_Plots.png/320px-Hydrogen_Density_Plots.png',
+    url: 'https://tr.wikipedia.org/wiki/Kuantum_mekani%C4%9Fi',
+    badge: 'TEMEL TEORİ',
+    facts: [
+      { label: 'İndirgenmiş Planck (ħ)', value: '1.054571817×10⁻³⁴ J·s' },
+      { label: 'Temel Kurucular', value: 'Planck, Bohr, Heisenberg, Schrödinger, Dirac' },
+      { label: 'Uygulamalar', value: 'Kuantum Hesaplama, Kriptografi, Lazerler, Yarıiletkenler' }
+    ]
+  },
+  'kara delik': {
+    title: 'Kara Delik (Black Hole)',
+    subtitle: 'Astrofizik · Kompakt Görelilik',
+    description: 'Kütleçekim alanı öylesine büyüktür ki hiçbir parçacık ve hatta ışık dahi olay ufkunun (event horizon) içinden kaçamaz. Merkezinde uzay-zaman eğriliğinin tekilleştiği bir bölge barındırır.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Black_hole_-_Messier_87_crop_max_res.jpg/320px-Black_hole_-_Messier_87_crop_max_res.jpg',
+    url: 'https://tr.wikipedia.org/wiki/Kara_delik',
+    badge: 'ASTROFİZİK',
+    facts: [
+      { label: 'Schwarzschild Yarıçapı', value: 'R_s = 2GM / c²' },
+      { label: 'Kerr Dış Ufku', value: 'r₊ = (GM/c²)(1 + √(1 - a*²))' },
+      { label: 'Hawking Işıması', value: 'T_H = ħc³ / (8πGMk_B)' }
+    ]
+  },
+  'isik hizi': {
+    title: 'Işık Hızı (c)',
+    subtitle: 'Evrensel Fiziksel Sabit · Özel Görelilik',
+    description: 'Işığın ve tüm kütlesiz parçacıkların vakum içindeki yayılma hızı. Evrende nedensellik, bilgi aktarımı ve kütleçekimsel dalgaların seyahat edebileceği mutlak evrensel hız sınırıdır.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Speed_of_light_from_Earth_to_Moon.gif/320px-Speed_of_light_from_Earth_to_Moon.gif',
+    url: 'https://tr.wikipedia.org/wiki/I%C5%9F%C4%B1k_h%C4%B1z%C4%B1',
+    badge: 'CODATA 2022',
+    facts: [
+      { label: 'Kesin Değer (SI)', value: '299.792.458 m/s' },
+      { label: 'Doğal Birimler', value: 'c = 1' },
+      { label: 'Kütle-Enerji Eşdeğerliği', value: 'E = mc²' }
+    ]
+  },
+  'james webb': {
+    title: 'James Webb Uzay Teleskobu (JWST)',
+    subtitle: 'Kızılötesi Uzay Gözlemevi · L2 Noktası',
+    description: 'NASA, ESA ve CSA ortaklığında 2021 yılında fırlatılan, Hubble’ın halefi olarak derin evrenin ilk yıldızlarını, ilk galaksilerini ve ötegezegen atmosferlerini gözlemleyen amiral gemisi uzay teleskobu.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/James_Webb_Space_Telescope_Mirror.jpg/320px-James_Webb_Space_Telescope_Mirror.jpg',
+    url: 'https://tr.wikipedia.org/wiki/James_Webb_Uzay_Teleskobu',
+    badge: 'UZAY GÖZLEMİ',
+    facts: [
+      { label: 'Konum', value: 'Güneş-Dünya L2 Lagrange Noktası (~1.5M km)' },
+      { label: 'Ayna Çapı', value: '6.5 m (18 altın kaplama berilyum segment)' },
+      { label: 'Gözlem Bandı', value: '0.6 - 28.3 μm (Turuncu - Orta Kızılötesi)' }
+    ]
+  },
+  'planck sabiti': {
+    title: 'Planck Sabiti (h & ħ)',
+    subtitle: 'Temel Doğa Sabiti · Kuantum Aksiyonu',
+    description: 'Kuantum mekaniğinde bir fotonun enerjisini dalga frekansı ile ilişkilendiren doğanın temel eylem sabitidir (E = hν = ħω).',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Black_body.svg/320px-Black_body.svg.png',
+    url: 'https://tr.wikipedia.org/wiki/Planck_sabiti',
+    badge: 'FİZİK SABİTİ',
+    facts: [
+      { label: 'Planck Sabiti (h)', value: '6.62607015×10⁻³⁴ J·s' },
+      { label: 'İndirgenmiş Sabit (ħ)', value: '1.054571817×10⁻³⁴ J·s' },
+      { label: 'Foton Enerjisi', value: 'E = ħ · ω' }
+    ]
+  },
+  bb84: {
+    title: 'BB84 Kuantum Anahtar Dağıtımı (QKD)',
+    subtitle: 'Kuantum Kriptografi Protokolü',
+    description: 'Charles Bennett ve Gilles Brassard tarafından 1984 yılında tasarlanan, foton polarizasyonuyla mutlak güvenli kriptografik simetrik anahtar paylaşımı sağlayan ilk kuantum protokolü.',
+    url: 'https://tr.wikipedia.org/wiki/Kuantum_kriptografi',
+    badge: 'GÜVENLİK',
+    facts: [
+      { label: 'Temel Teorem', value: 'Klonlanamazlık Teoremi (No-Cloning)' },
+      { label: 'QBER Güvenlik Sınırı', value: '< %11.0 (Shor-Preskill Güvenliği)' },
+      { label: 'Kullanılan Bazlar', value: 'Doğrusal (+ / Z) ve Çapraz (× / X)' }
+    ]
+  },
+  einstein: {
+    title: 'Albert Einstein',
+    subtitle: 'Teorik Fizikçi · 1879 - 1955',
+    description: 'Özel ve Genel Görelilik teorilerini geliştiren, kütle-enerji denkliğini (E=mc²) formüle eden ve fotoelektrik etki keşfi ile 1921 Nobel Fizik Ödülü’nü alan 20. yüzyılın en etkili bilim insanı.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Albert_Einstein_Head.jpg/320px-Albert_Einstein_Head.jpg',
+    url: 'https://tr.wikipedia.org/wiki/Albert_Einstein',
+    badge: 'BİLİM İNSANI',
+    facts: [
+      { label: 'Ödüller', value: '1921 Nobel Fizik Ödülü (Fotoelektrik Etki)' },
+      { label: 'Başlıca Eserler', value: 'Özel Görelilik (1905), Genel Görelilik (1915)' }
+    ]
+  },
+  erciyes: {
+    title: 'Erciyes Üniversitesi Astronomi Araştırma Merkezi (UZAYBİMER)',
+    subtitle: 'Gözlemsel Astrofizik & Radyo Astronomi · Kayseri',
+    description: 'Kayseri Erciyes Dağı eteklerinde konuşlu, Türkiye’nin ilk radyo astronomi çanağına ve optik teleskoplarına ev sahipliği yapan öncü ulusal gözlem istasyonu.',
+    url: 'https://uzaybimer.erciyes.edu.tr',
+    badge: 'GÖZLEMEVİ',
+    facts: [
+      { label: 'Konum', value: 'Kayseri, Türkiye (38.7° K, 35.5° D)' },
+      { label: 'Ekipmanlar', value: '12.8m Radyo Çanağı, T40 ve T30 Optik Teleskoplar' }
+    ]
+  },
+  quantos: {
+    title: 'QuantOS (Quantro Bilimsel İşletim Sistemi)',
+    subtitle: 'AR-GE İşletim Sistemi · Windows 11 Fluent + Bare-Metal AArch64',
+    description: 'Quantro Bağımsız Kuantum Mekaniği ve Astrofizik Merkezi tarafından geliştirilen; AArch64 Limine çekirdeği, Windows 11 Fluent DWM masaüstü kabuğu ve J.A.R.V.I.S. sesli yapay zekasını birleştiren açık kaynaklı bilimsel işletim sistemi.',
+    url: 'https://github.com/Lennebraha38/QuantOS',
+    badge: 'QUANTRO OS',
+    facts: [
+      { label: 'Mimari', value: 'AArch64 Bare-Metal Kernel + WebAssembly + DWM' },
+      { label: 'Entegre Uygulamalar', value: '16 Adet Bağımsız Bilimsel ve Masaüstü Aracı' },
+      { label: 'Merkez', value: 'Kayseri, Türkiye (Açık Kaynak MIT Lisansı)' }
+    ]
+  }
+};
+
+function normalizeKey(str) {
+  return String(str || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .trim();
+}
+
+function tryEvaluateMath(expr) {
+  if (!expr) return null;
+  const raw = expr.trim();
+  if (!/^[0-9\s+\-*/^().,%√a-zA-Z]+$/.test(raw)) return null;
+  if (!/[+\-*/^%√]|sqrt|sin|cos|tan|log|ln|abs/i.test(raw)) return null;
+
+  try {
+    let s = raw
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/,/g, '.')
+      .replace(/√\s*(\d+(\.\d+)?)/g, 'Math.sqrt($1)')
+      .replace(/sqrt\(([^)]+)\)/gi, 'Math.sqrt($1)')
+      .replace(/sin\(([^)]+)\)/gi, 'Math.sin($1)')
+      .replace(/cos\(([^)]+)\)/gi, 'Math.cos($1)')
+      .replace(/tan\(([^)]+)\)/gi, 'Math.tan($1)')
+      .replace(/log\(([^)]+)\)/gi, 'Math.log10($1)')
+      .replace(/ln\(([^)]+)\)/gi, 'Math.log($1)')
+      .replace(/pi\b/gi, 'Math.PI')
+      .replace(/e\b/gi, 'Math.E')
+      .replace(/\^/g, '**');
+
+    if (!/^[0-9\s+\-*/().MathsqrtcostanlogPIE*]+$/.test(s)) return null;
+
+    const fn = new Function(`return (${s});`);
+    const val = fn();
+    if (typeof val === 'number' && !isNaN(val) && isFinite(val)) {
+      return {
+        expression: raw,
+        result: Number(val.toFixed(8)).toString()
+      };
+    }
+  } catch {}
+  return null;
+}
+
+async function fetchWikipediaKnowledge(term) {
+  try {
+    const summaryUrl = `https://tr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`;
+    const resp = await fetch(summaryUrl, {
+      headers: { 'User-Agent': 'QuantOS/2.0 (Quantro AR-GE; research@quantro.org)' },
+      signal: AbortSignal.timeout(3500)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.extract && data.type !== 'disambiguation') {
+        return {
+          title: data.title,
+          subtitle: data.description || 'Vikipedi Özgür Ansiklopedi Maddesi',
+          description: data.extract,
+          image: data.thumbnail?.source || null,
+          url: data.content_urls?.desktop?.page || `https://tr.wikipedia.org/wiki/${encodeURIComponent(data.title)}`,
+          badge: 'VİKİPEDİ BİLGİ KARTI',
+          facts: []
+        };
+      }
+    }
+
+    const osUrl = `https://tr.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(term)}&limit=1&namespace=0&format=json`;
+    const osResp = await fetch(osUrl, {
+      headers: { 'User-Agent': 'QuantOS/2.0' },
+      signal: AbortSignal.timeout(3000)
+    });
+    if (osResp.ok) {
+      const osData = await osResp.json();
+      const bestTitle = osData[1]?.[0];
+      if (bestTitle && bestTitle.toLowerCase() !== term.toLowerCase()) {
+        const sum2 = await fetch(`https://tr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle)}`, {
+          headers: { 'User-Agent': 'QuantOS/2.0' },
+          signal: AbortSignal.timeout(3000)
+        });
+        if (sum2.ok) {
+          const d2 = await sum2.json();
+          if (d2.extract) {
+            return {
+              title: d2.title,
+              subtitle: d2.description || 'Vikipedi Özgür Ansiklopedi',
+              description: d2.extract,
+              image: d2.thumbnail?.source || null,
+              url: d2.content_urls?.desktop?.page || `https://tr.wikipedia.org/wiki/${encodeURIComponent(d2.title)}`,
+              badge: 'VİKİPEDİ BİLGİ KARTI',
+              facts: []
+            };
+          }
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+async function fetchWikipediaOpenSearchResults(query) {
+  try {
+    const url = `https://tr.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=10&namespace=0&format=json`;
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'QuantOS/2.0' },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const titles = data[1] || [];
+      const snippets = data[2] || [];
+      const links = data[3] || [];
+      const results = [];
+      for (let i = 0; i < titles.length; i++) {
+        results.push({
+          title: titles[i],
+          link: links[i] || `https://tr.wikipedia.org/wiki/${encodeURIComponent(titles[i])}`,
+          snippet: snippets[i] || `${titles[i]} hakkında ayrıntılı ansiklopedik bilgi ve bilimsel referanslar.`,
+          displayUrl: 'tr.wikipedia.org'
+        });
+      }
+      return results;
+    }
+  } catch {}
+  return [];
+}
+
+async function fetchArXivPapers(query) {
+  try {
+    const url = `http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=8&sortBy=relevance`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const xml = await resp.text();
+      const entries = [];
+      const entryRegex = /<entry>([\s\S]*?)<\/entry>/gi;
+      let em;
+      while ((em = entryRegex.exec(xml)) !== null && entries.length < 8) {
+        const block = em[1];
+        const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/i);
+        const summaryMatch = block.match(/<summary>([\s\S]*?)<\/summary>/i);
+        const idMatch = block.match(/<id>([\s\S]*?)<\/id>/i);
+        const publishedMatch = block.match(/<published>([\s\S]*?)<\/published>/i);
+
+        const authors = [];
+        const authorRegex = /<author>\s*<name>([\s\S]*?)<\/name>/gi;
+        let am;
+        while ((am = authorRegex.exec(block)) !== null && authors.length < 4) {
+          authors.push(am[1].trim());
+        }
+
+        const rawTitle = (titleMatch ? titleMatch[1] : 'ArXiv Makalesi').replace(/\s+/g, ' ').trim();
+        const rawSummary = (summaryMatch ? summaryMatch[1] : '').replace(/\s+/g, ' ').trim();
+        const id = (idMatch ? idMatch[1] : '').trim();
+        const published = (publishedMatch ? publishedMatch[1].slice(0, 10) : '');
+
+        entries.push({
+          title: rawTitle,
+          link: id,
+          pdfLink: id.replace('/abs/', '/pdf/') + '.pdf',
+          snippet: rawSummary.slice(0, 240) + (rawSummary.length > 240 ? '...' : ''),
+          displayUrl: 'arxiv.org',
+          authors: authors.join(', ') || 'ArXiv Araştırmacıları',
+          published,
+          isAcademic: true
+        });
+      }
+      return entries;
+    }
+  } catch {}
+  return [];
+}
+
+async function handleApiSuggest(urlObj, req, res) {
+  const query = (urlObj.searchParams.get('q') || '').trim();
+  if (!query) {
+    sendJson(res, 200, { ok: true, query: '', suggestions: [] });
+    return;
+  }
+
+  const norm = normalizeKey(query);
+  const localHits = SCIENTIFIC_SUGGESTIONS.filter((s) => normalizeKey(s).includes(norm)).slice(0, 5);
+
+  let wikiHits = [];
+  try {
+    const wResp = await fetch(
+      `https://tr.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=6&namespace=0&format=json`,
+      { signal: AbortSignal.timeout(2500) }
+    );
+    if (wResp.ok) {
+      const data = await wResp.json();
+      if (Array.isArray(data[1])) wikiHits = data[1];
+    }
+  } catch {}
+
+  const merged = Array.from(new Set([...localHits, ...wikiHits])).slice(0, 8);
+  sendJson(res, 200, {
+    ok: true,
+    query,
+    suggestions: merged
+  });
+}
+
 async function handleApiSearch(urlObj, req, res) {
   const query = (urlObj.searchParams.get('q') || '').trim();
   if (!query) {
@@ -873,8 +1229,69 @@ async function handleApiSearch(urlObj, req, res) {
   }
 
   const provider = (urlObj.searchParams.get('provider') || 'auto').toLowerCase();
+  const tab = (urlObj.searchParams.get('tab') || 'all').toLowerCase();
   const apiKey = (urlObj.searchParams.get('apiKey') || process.env.GOOGLE_SEARCH_API_KEY || process.env.SERPER_API_KEY || '').trim();
   const cx = (urlObj.searchParams.get('cx') || process.env.GOOGLE_SEARCH_CX || '').trim();
+
+  // Akıllı Hesap Makinesi kartı kontrolü
+  const calculatorCard = tryEvaluateMath(query);
+
+  // Bilgi Kartı (Knowledge Graph Card) kontrolü
+  let knowledgeCard = null;
+  const normQ = normalizeKey(query);
+  for (const [k, card] of Object.entries(LOCAL_KNOWLEDGE_BASE)) {
+    if (normQ.includes(k) || k.includes(normQ)) {
+      knowledgeCard = card;
+      break;
+    }
+  }
+
+  // Akademik / ArXiv sekmesi seçilmişse
+  if (tab === 'academic') {
+    const arxivResults = await fetchArXivPapers(query);
+    if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
+    sendJson(res, 200, {
+      ok: true,
+      provider: 'arxiv-academic',
+      query,
+      tab: 'academic',
+      knowledgeCard,
+      calculatorCard,
+      results: arxivResults.length ? arxivResults : [
+        {
+          title: `ArXiv'de Ara: "${query}"`,
+          link: `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all`,
+          snippet: `Kuantum mekaniği, genel görelilik ve astrofizik makalelerini doğrudan ArXiv üzerinde araştırın.`,
+          displayUrl: 'arxiv.org',
+          isAcademic: true
+        }
+      ]
+    });
+    return;
+  }
+
+  // Vikipedi sekmesi seçilmişse
+  if (tab === 'wiki') {
+    const wikiResults = await fetchWikipediaOpenSearchResults(query);
+    if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
+    sendJson(res, 200, {
+      ok: true,
+      provider: 'wikipedia-opensearch',
+      query,
+      tab: 'wiki',
+      knowledgeCard,
+      calculatorCard,
+      results: wikiResults.length ? wikiResults : [
+        {
+          title: `Vikipedi Türkçe: "${query}"`,
+          link: `https://tr.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(query)}`,
+          snippet: `Vikipedi özgür ansiklopedi üzerinde "${query}" araması.`,
+          displayUrl: 'tr.wikipedia.org'
+        }
+      ]
+    });
+    return;
+  }
 
   // 1) Google Custom Search JSON API
   if ((provider === 'google' || provider === 'auto') && apiKey && cx) {
@@ -889,10 +1306,14 @@ async function handleApiSearch(urlObj, req, res) {
           snippet: it.snippet || '',
           displayUrl: it.displayLink || it.link || ''
         }));
+        if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
         sendJson(res, 200, {
           ok: true,
           provider: 'google-api',
           query,
+          tab,
+          knowledgeCard,
+          calculatorCard,
           totalResults: data.searchInformation?.totalResults || String(items.length),
           results: items
         });
@@ -923,10 +1344,14 @@ async function handleApiSearch(urlObj, req, res) {
           snippet: it.snippet || '',
           displayUrl: it.link ? new URL(it.link).hostname : ''
         }));
+        if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
         sendJson(res, 200, {
           ok: true,
           provider: 'serper-api',
           query,
+          tab,
+          knowledgeCard,
+          calculatorCard,
           results: items
         });
         return;
@@ -944,7 +1369,7 @@ async function handleApiSearch(urlObj, req, res) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 QuantOS/1.0',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(10000)
     });
 
     if (ddgResp.ok) {
@@ -969,10 +1394,14 @@ async function handleApiSearch(urlObj, req, res) {
       }
 
       if (results.length > 0) {
+        if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
         sendJson(res, 200, {
           ok: true,
           provider: 'duckduckgo-live',
           query,
+          tab,
+          knowledgeCard,
+          calculatorCard,
           results
         });
         return;
@@ -982,11 +1411,31 @@ async function handleApiSearch(urlObj, req, res) {
     console.warn('[QuantOS Search] DuckDuckGo uyarısı:', ddgErr.message);
   }
 
-  // 4) Doğrudan Arama Bağlantıları
+  // 4) Wikipedia OpenSearch Fallback (Doğrulanmış Canlı Ansiklopedik Sonuçlar)
+  const wikiFallback = await fetchWikipediaOpenSearchResults(query);
+  if (!knowledgeCard) knowledgeCard = await fetchWikipediaKnowledge(query);
+
+  if (wikiFallback.length > 0) {
+    sendJson(res, 200, {
+      ok: true,
+      provider: 'wikipedia-opensearch',
+      query,
+      tab,
+      knowledgeCard,
+      calculatorCard,
+      results: wikiFallback
+    });
+    return;
+  }
+
+  // 5) Doğrudan Arama Bağlantıları Fallback
   sendJson(res, 200, {
     ok: true,
     provider: 'web-direct',
     query,
+    tab,
+    knowledgeCard,
+    calculatorCard,
     results: [
       {
         title: `Google'da Ara: "${query}"`,
@@ -1152,6 +1601,15 @@ export function createQuantOSServer(options = {}) {
           return;
         }
         await handleApiProxy(urlObj, req, res);
+        return;
+      }
+
+      if (pathname === '/api/suggest') {
+        if (method !== 'GET' && method !== 'HEAD') {
+          sendJson(res, 405, { ok: false, error: 'Yalnızca GET ve HEAD desteklenir.' });
+          return;
+        }
+        await handleApiSuggest(urlObj, req, res);
         return;
       }
 
