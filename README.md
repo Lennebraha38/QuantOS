@@ -39,7 +39,7 @@
   - *"Jarvis z=2 için kozmoloji hesapla"* / *"Jarvis sistem durumunu raporla"* / *"Jarvis bakır temaya geç"*
 - **Opsiyonel Harici LLM Bağlantısı**: Yerleşik deterministik bilimsel NLU motoruna ek olarak Ayarlar üzerinden herhangi bir OpenAI-uyumlu uç nokta bağlanabilir.
 
-### 3. Quantro AR-GE Bilimsel Uygulama Paketi (14 Yerleşik Uygulama)
+### 3. Quantro AR-GE Bilimsel Uygulama Paketi (16 Yerleşik Uygulama)
 | Uygulama | Kimlik | Açıklama |
 |---|---|---|
 | **J.A.R.V.I.S. Komuta Merkezi** | `jarvis` | Arc-Reactor ses çekirdeği, canlı transkript, sesli/yazılı komutlar, makrolar ve tanılama |
@@ -56,6 +56,8 @@
 | **Not Defteri & AR-GE Günlüğü** | `notepad` | Çok sekmeli Markdown/metin editörü, Vellum okuma yüzeyi ve VFS kaydı |
 | **Spektrum & Çizim Stüdyosu** | `spectrum` | Elementel astronomik tayf çizgileri (`H, He, Na, Ca II, Fe, O III`) + Doppler kırmızıya kayma ($z$) analizörü ve çizim tuvali |
 | **Quantro Mağaza** | `store` | Sistem ve AR-GE uygulama kataloğu, Başlat/Görev Çubuğu sabitleme yönetimi |
+| **Ekran Alıntısı Aracı** | `snipping` | Windows 11 tarzı tam ekran/pencere yakalama, çizim/vurgulama araçları, VFS ve PNG kaydı |
+| **QuantMark Benchmark** | `quantmark` | 1-6 Kübit QPU Hilbert dönüşümü, Kerr kara delik tensörleri ve N-Cisim mekaniği süper bilgisayar kıyaslama stüdyosu |
 
 ### 4. Bare-Metal AArch64 Çekirdeği (UEFI + Limine)
 `kernel/` dizini altında gerçek donanım ve `qemu-system-aarch64` üzerinde önyüklenen, C17 ve AArch64 Assembly ile yazılmış bağımsız çekirdek yer alır:

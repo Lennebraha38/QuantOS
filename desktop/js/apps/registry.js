@@ -1,5 +1,5 @@
 /**
- * QuantOS — 14 Yerleşik Uygulama Kayıt Defteri (App Registry)
+ * QuantOS — 16 Yerleşik Uygulama Kayıt Defteri (App Registry)
  */
 import { mountJarvisApp } from './jarvis-app.js';
 import { mountQLabApp } from './qlab-app.js';
@@ -15,6 +15,8 @@ import { mountCalculatorApp } from './calculator-app.js';
 import { mountNotepadApp } from './notepad-app.js';
 import { mountSpectrumApp } from './spectrum-app.js';
 import { mountStoreApp } from './store-app.js';
+import { mountSnippingApp } from './snipping-app.js';
+import { mountQuantMarkApp } from './quantmark-app.js';
 
 export const APP_REGISTRY = [
   {
@@ -170,6 +172,28 @@ export const APP_REGISTRY = [
     defaultHeight: 560,
     description: 'QuantOS yerleşik sistem ve AR-GE modüllerini keşfetme ve görev çubuğuna sabitleme merkezi.',
     mount: mountStoreApp,
+  },
+  {
+    id: 'snipping',
+    title: 'Quantro Ekran Alıntısı Aracı',
+    shortTitle: 'Ekran Alıntısı',
+    category: 'system',
+    singleton: true,
+    defaultWidth: 860,
+    defaultHeight: 560,
+    description: 'Windows 11 tarzı tam ekran ve pencere yakalama, çizim/vurgulama araçları ve PNG kaydı.',
+    mount: mountSnippingApp,
+  },
+  {
+    id: 'quantmark',
+    title: 'QuantMark Benchmark Stüdyosu',
+    shortTitle: 'QuantMark',
+    category: 'science',
+    singleton: true,
+    defaultWidth: 920,
+    defaultHeight: 620,
+    description: 'QPU Hilbert uzayı, Kerr kara delik tensörleri ve N-Cisim mekaniği süper bilgisayar kıyaslama laboratuvarı.',
+    mount: mountQuantMarkApp,
   },
 ];
 

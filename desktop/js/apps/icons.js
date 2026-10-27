@@ -49,6 +49,12 @@ export const ICONS = {
   store: wrap(
     '<path d="M5 8h14l-1.2 11.5a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>'
   ),
+  snipping: wrap(
+    '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/>'
+  ),
+  quantmark: wrap(
+    '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="5"/>'
+  ),
 
   // Shell & Window Controls
   search: wrap('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.2 4.2"/>'),

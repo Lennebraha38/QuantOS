@@ -124,6 +124,18 @@ const APP_CATALOG = [
     aliases: ['jarvis-center', 'jarvis-hub', 'assistant'],
     title: 'J.A.R.V.I.S. Komuta Merkezi',
     keywords: ['jarvis merkez', 'jarvis komuta', 'jarvis center', 'sesli asistan panel']
+  },
+  {
+    id: 'snipping',
+    aliases: ['snip', 'ekran-alintisi', 'snipping-tool'],
+    title: 'Ekran Alıntısı Aracı',
+    keywords: ['ekran alıntısı', 'ekran alintisi', 'snipping tool', 'screenshot al', 'ekran yakala']
+  },
+  {
+    id: 'quantmark',
+    aliases: ['quantmark-studio', 'bench-studio', 'benchmark-studio', 'benchmark'],
+    title: 'QuantMark Benchmark Stüdyosu',
+    keywords: ['quantmark', 'benchmark stüdyo', 'benchmark studyosu', 'performans laboratuvarı', 'hız testi']
   }
 ];
 

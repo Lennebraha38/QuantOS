@@ -45,6 +45,8 @@ const DESKTOP_SHORTCUTS = [
   'qlab',
   'astrolab',
   'qvault',
+  'quantmark',
+  'snipping',
   'explorer',
   'terminal',
   'code',

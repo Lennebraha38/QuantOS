@@ -11,15 +11,15 @@ import { getAppIcon } from '../desktop/js/apps/icons.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-test('APP_REGISTRY: contains all 14 Windows 11 + Quantro AR-GE apps with SVG icons', () => {
+test('APP_REGISTRY: contains all 16 Windows 11 + Quantro AR-GE apps with SVG icons', () => {
   const expectedIds = [
     'jarvis', 'qlab', 'astrolab', 'qvault',
     'explorer', 'terminal', 'code', 'taskmgr',
     'settings', 'browser', 'calculator', 'notepad',
-    'spectrum', 'store',
+    'spectrum', 'store', 'snipping', 'quantmark',
   ];
 
-  assert.equal(APP_REGISTRY.length, 14);
+  assert.equal(APP_REGISTRY.length, 16);
   for (const id of expectedIds) {
     const app = APP_MAP.get(id);
     assert.ok(app, `Eksik uygulama: ${id}`);
