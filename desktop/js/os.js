@@ -606,6 +606,10 @@ async function bootstrapQuantOS() {
 
   $('#start-search-input').addEventListener('input', (e) => renderStartMenu(e.target.value));
   $('#start-open-store-btn').addEventListener('click', () => osContext.openApp('store'));
+  $('#start-run-btn')?.addEventListener('click', () => {
+    closeAllFlyouts();
+    openRunDialog();
+  });
   $('#start-open-explorer-btn').addEventListener('click', () => osContext.openApp('explorer'));
 
   $('#start-apps-grid').addEventListener('click', (e) => {
@@ -1105,6 +1109,7 @@ async function bootstrapQuantOS() {
       <button type="button" class="ctx-item" data-ctx="jarvis"><span class="ctx-item-left">${ICONS.jarvis} J.A.R.V.I.S. Komuta</span><span class="ctx-kbd">Ctrl+Space</span></button>
       <button type="button" class="ctx-item" data-ctx="qlab"><span class="ctx-item-left">${ICONS.qlab} Yeni Kuantum Devresi</span></button>
       <button type="button" class="ctx-item" data-ctx="terminal"><span class="ctx-item-left">${ICONS.terminal} QuantShell Terminalde Aç</span></button>
+      <button type="button" class="ctx-item" data-ctx="run"><span class="ctx-item-left">⚡ Çalıştır...</span><span class="ctx-kbd">Alt+R</span></button>
       <div class="ctx-sep"></div>
       <button type="button" class="ctx-item" data-ctx="new-folder"><span class="ctx-item-left">${ICONS.folder} Yeni Klasör</span></button>
       <button type="button" class="ctx-item" data-ctx="new-note"><span class="ctx-item-left">${ICONS.file} Yeni Araştırma Notu</span></button>
@@ -1122,6 +1127,7 @@ async function bootstrapQuantOS() {
     if (act === 'jarvis') toggleFlyout('#jarvis-capsule', () => $('#jarvis-cap-input').focus());
     else if (act === 'qlab') osContext.openApp('qlab');
     else if (act === 'terminal') osContext.openApp('terminal');
+    else if (act === 'run') openRunDialog();
     else if (act === 'snap') wm.snapWindows('split-2');
     else if (act === 'theme') osContext.openApp('settings', { section: 'personalize' });
     else if (act === 'new-folder') {

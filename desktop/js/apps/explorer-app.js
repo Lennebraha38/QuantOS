@@ -33,6 +33,9 @@ export function mountExplorerApp(container, osContext, args = {}) {
         <button type="button" class="btn btn-sm" id="ex-rename">Adlandır</button>
         <button type="button" class="btn btn-sm" id="ex-copy">Kopyala</button>
         <button type="button" class="btn btn-sm" id="ex-paste">Yapıştır</button>
+        <button type="button" class="btn btn-sm" id="ex-upload" title="Bilgisayardan Dosya İçe Aktar">📥 İçe Aktar</button>
+        <button type="button" class="btn btn-sm" id="ex-download" title="Seçili Dosyayı Bilgisayara İndir">📤 İndir</button>
+        <input type="file" id="ex-upload-input" style="display:none;" />
         <button type="button" class="btn btn-sm btn-danger" id="ex-del">${ICONS.trash} Sil</button>
       </div>
 
@@ -217,6 +220,60 @@ export function mountExplorerApp(container, osContext, args = {}) {
     vfs.remove(selectedPath);
     selectedPath = null;
     render();
+  });
+
+  const uploadInput = container.querySelector('#ex-upload-input');
+  container.querySelector('#ex-upload').addEventListener('click', () => {
+    uploadInput.click();
+  });
+
+  uploadInput.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const p = `${cwd.replace(/\/$/, '')}/${file.name}`;
+      vfs.write(p, reader.result);
+      osContext.notify?.('Dosya Gezgini', `Dosya içe aktarıldı: ${file.name}`);
+      render();
+    };
+    reader.readAsText(file);
+    uploadInput.value = '';
+  });
+
+  container.querySelector('#ex-download').addEventListener('click', () => {
+    if (!selectedPath) {
+      osContext.notify?.('Dosya Gezgini', 'Lütfen indirmek için bir dosya seçin.');
+      return;
+    }
+    const st = vfs.stat(selectedPath);
+    if (!st || st.type === 'dir') {
+      osContext.notify?.('Dosya Gezgini', 'Sadece dosyalar indirilebilir.');
+      return;
+    }
+    const content = vfs.read(selectedPath);
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = st.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    osContext.notify?.('Dosya Gezgini', `İndirildi: ${st.name}`);
+  });
+
+  gridEl.addEventListener('keydown', (e) => {
+    if (!selectedPath) return;
+    if (e.key === 'Enter') {
+      const st = vfs.stat(selectedPath);
+      if (st) openEntry(st);
+    } else if (e.key === 'Delete') {
+      vfs.remove(selectedPath);
+      selectedPath = null;
+      render();
+    }
   });
 
   const unsub = vfs.onChange(() => render());

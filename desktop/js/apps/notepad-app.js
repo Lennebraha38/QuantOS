@@ -37,6 +37,7 @@ export function mountNotepadApp(container, osContext, args = {}) {
         <button type="button" class="btn btn-sm btn-primary" id="np-save">Kaydet (Ctrl+S)</button>
         <button type="button" class="btn btn-sm" id="np-saveas">Farklı Kaydet</button>
         <button type="button" class="btn btn-sm" id="np-vellum">Vellum Kağıt Okuma Modu</button>
+        <button type="button" class="btn btn-sm" id="np-download" title="Dosyayı Bilgisayara İndir">📤 İndir</button>
         <span class="mono" style="margin-left:auto;font-size:11px;color:var(--text-3);" id="np-path"></span>
       </div>
       <div class="app-main" id="np-wrap" style="padding:0;">
@@ -139,6 +140,20 @@ export function mountNotepadApp(container, osContext, args = {}) {
   });
 
   container.querySelector('#np-save').addEventListener('click', save);
+
+  container.querySelector('#np-download').addEventListener('click', () => {
+    const t = cur();
+    const blob = new Blob([t.content || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = t.path.split('/').pop() || 'not.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    osContext.notify?.('Not Defteri', `İndirildi: ${a.download}`);
+  });
 
   container.querySelector('#np-saveas').addEventListener('click', async () => {
     const t = cur();

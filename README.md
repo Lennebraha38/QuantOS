@@ -13,7 +13,7 @@
 
 ### 1. Tam Windows 11 Masaüstü Deneyimi (DWM & Kabuk)
 - **Önyükleme -> Kilit Ekranı -> Oturum Açma Akışı**: UEFI/Limine önyükleme ekranı, canlı astronomik/kuantum durum özetli Windows 11 Kilit Ekranı ve araştırmacı giriş ekranı.
-- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **Windows 11 Alt+Tab 3D/Akrilik Görev Değiştirici**, **çift tıklama debounce koruması** (çift tıklamada tek pencere açılışı ve odağa alma) ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
+- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **Windows 11 Alt+Tab 3D/Akrilik Görev Değiştirici**, **Windows 11 Çalıştır (Run - Alt+R / Win+R)**, evrensel sistem kısayolları (**Alt+D Masaüstü, Alt+E Gezgin, Alt+I Ayarlar, Alt+L Kilitle**), **çift tıklama debounce koruması** ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
 - **Küresel Arama (Ctrl+K) & Satır İçi Bilimsel Hesaplama**: Başlat ve arama paletinde anlık matematik/fizik formül değerlendirmesi (örn. `2^10`, `sqrt(144)`, `2*pi*6371`, `G*M_sun/c^2`), VFS dosya arama ve doğrudan Google arama yönlendirmesi.
 - **Sanal Masaüstleri & Görev Görünümü (Task View)**: Çoklu çalışma alanları (*Komuta*, *Kuantum AR-GE*, *Astrofizik Gözlemevi*) arasında anında geçiş.
 - **Ortalanmış Görev Çubuğu & Başlat Menüsü**: Anlık küresel arama (`Ctrl+K`), sabitlenmiş uygulamalar, son AR-GE dosyaları, güç menüsü (Kilitle, Uyku, Yeniden Başlat, Kapat).
@@ -46,7 +46,7 @@
 | **Quantro Q-Lab** | `qlab` | 1–6 kübit karmaşık durum vektörü simülatörü (`H, X, Y, Z, S, T, RX, RY, RZ, CX, CZ, SWAP`), kısmi iz Bloch küresi, 1024-shot histogram, OpenQASM 2.0 |
 | **Quantro AstroLab** | `astrolab` | Kerr/Schwarzschild kara delik mercekleme, Velocity-Verlet N-cisim yörünge mekaniği, Simpson integralli $\Lambda$CDM kozmoloji, sesli LIGO kütleçekim dalgası (chirp) |
 | **Q-Vault (BB84 & QRNG)** | `qvault` | BB84 kuantum kriptografi (QBER analizi), canlı ANU kuantum vakum rastgelelik motoru ve WebCrypto AES-256-GCM dosya şifreleme |
-| **Dosya Gezgini** | `explorer` | Kalıcı sanal dosya sistemi (`C:\QuantOS`, `C:\Users\Quantro\...`), sekme/klasör/arama/kopyala/taşı |
+| **Dosya Gezgini** | `explorer` | Kalıcı sanal dosya sistemi (`C:\QuantOS`, `C:\Users\Quantro\...`), **cihazdan dosya içe aktarma (upload) / dışa indirme (download)**, sekme/klasör/arama/kopyala/taşı |
 | **QuantShell Terminal** | `terminal` | Çok sekmeli gerçek Linux Bash kabuğu (140+ Bash/Linux komutu, canlı `cd` dizin takibi, sunucu uç noktası `/api/terminal/exec`) + dahili `qsim`, `bb84`, `qrng`, `blackhole`, `cosmo`, `jarvis` bilimsel motorları |
 | **QuantCode Studio** | `code` | VFS entegreli çok sekmeli kod düzenleyici, JS çalıştırıcı, QASM aktarıcı ve Markdown önizleme |
 | **Görev Yöneticisi** | `taskmgr` | Canlı süreç yönetimi + gerçek zamanlı FPS, Bellek, Host Linux Çekirdek Yükü ve QPU durum vektörü grafikleri |

@@ -49,12 +49,19 @@ test('Host J.A.R.V.I.S. Voice Bridge CLI & AArch64 Kernel Build Artifacts', () =
   const bridgePath = path.join(ROOT, 'scripts/jarvis-voice-bridge.py');
   assert.ok(fs.existsSync(bridgePath), 'scripts/jarvis-voice-bridge.py mevcut olmalı');
 
-  const helpOut = execFileSync('python3', [bridgePath, '--help'], { encoding: 'utf8' });
+  let pyBin = 'python3';
+  try {
+    execFileSync('python3', ['--version'], { stdio: 'ignore' });
+  } catch {
+    pyBin = 'python';
+  }
+
+  const helpOut = execFileSync(pyBin, [bridgePath, '--help'], { encoding: 'utf8' });
   assert.ok(helpOut.includes('JARVIS_SPEAK'), 'Voice bridge --help çıktısı [JARVIS_SPEAK] içermeli');
 
-  const selfOut = execFileSync('python3', [bridgePath, '--self-test', 'Test mesaji'], {
+  const selfOut = execFileSync(pyBin, [bridgePath, '--self-test', 'Test mesaji'], {
     encoding: 'utf8',
-    env: { ...process.env, QUANTOS_NO_TTS: '1' },
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', QUANTOS_NO_TTS: '1' },
   });
   assert.ok(selfOut.includes('J.A.R.V.I.S. KOMUTA YANITI') && selfOut.includes('Test mesaji'));
 

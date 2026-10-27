@@ -414,10 +414,10 @@ async function handleApiTerminalExec(req, res) {
   }
 
   const rawCmd = typeof body?.command === 'string' ? body.command.trim() : '';
-  let curDir = typeof body?.cwd === 'string' && body.cwd.trim() ? path.resolve(body.cwd.trim()) : '/root/projects/QuantOS';
+  let curDir = typeof body?.cwd === 'string' && body.cwd.trim() ? path.resolve(body.cwd.trim()) : __dirname;
 
   if (!fs.existsSync(curDir) || !fs.statSync(curDir).isDirectory()) {
-    curDir = '/root/projects/QuantOS';
+    curDir = __dirname;
   }
 
   if (!rawCmd) {
@@ -429,9 +429,24 @@ async function handleApiTerminalExec(req, res) {
   const cdMatch = rawCmd.match(/^cd(?:\s+(.*))?$/);
   if (cdMatch) {
     const rawTarget = (cdMatch[1] || '').trim();
-    let target = rawTarget || (process.env.HOME || '/root');
+    let target = rawTarget || (process.env.HOME || __dirname);
     if (target === '~' || target.startsWith('~/')) {
-      target = target.replace(/^~/, process.env.HOME || '/root');
+      target = target.replace(/^~/, process.env.HOME || __dirname);
+    }
+    if (rawTarget === '/tmp') {
+      try {
+        if (!fs.existsSync('C:\\tmp') && process.platform === 'win32') {
+          fs.mkdirSync('C:\\tmp', { recursive: true });
+        }
+      } catch {}
+      sendJson(res, 200, {
+        ok: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+        cwd: '/tmp'
+      });
+      return;
     }
     const nextDir = path.resolve(curDir, target);
     try {
@@ -466,12 +481,24 @@ async function handleApiTerminalExec(req, res) {
     }
   }
 
-  const shellBin = fs.existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh';
+  const isWin = process.platform === 'win32';
+  let shellBin;
+  let shellArgs;
+
+  if (isWin) {
+    shellBin = 'powershell.exe';
+    shellArgs = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', rawCmd];
+  } else {
+    shellBin = fs.existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh';
+    shellArgs = ['-c', rawCmd];
+  }
+
   let stdout = '';
   let stderr = '';
   let killed = false;
+  let responded = false;
 
-  const child = spawn(shellBin, ['-c', rawCmd], {
+  const child = spawn(shellBin, shellArgs, {
     cwd: curDir,
     env: {
       ...process.env,
@@ -499,6 +526,8 @@ async function handleApiTerminalExec(req, res) {
 
   child.on('close', (code) => {
     clearTimeout(timer);
+    if (responded) return;
+    responded = true;
     if (killed) {
       stderr += '\n[QuantShell] Komut zaman aşımına uğradı (30s sınır).\n';
     }
@@ -513,6 +542,8 @@ async function handleApiTerminalExec(req, res) {
 
   child.on('error', (err) => {
     clearTimeout(timer);
+    if (responded) return;
+    responded = true;
     sendJson(res, 200, {
       ok: false,
       stdout,

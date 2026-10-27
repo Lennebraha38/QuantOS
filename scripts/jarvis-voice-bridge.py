@@ -21,6 +21,13 @@ import shutil
 import signal
 import subprocess
 import sys
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 import threading
 import time
 from datetime import datetime

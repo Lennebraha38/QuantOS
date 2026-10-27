@@ -91,6 +91,18 @@ export function mountCalculatorApp(container) {
         render();
       });
 
+      const copyBtn = bodyEl.querySelector('#ca-copy');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          if (osContext?.copyToClipboard) {
+            osContext.copyToClipboard(result);
+          } else {
+            navigator.clipboard?.writeText?.(result).catch(() => {});
+          }
+          osContext?.notify?.('Hesap Makinesi', `Sonuç panoya kopyalandı: ${result}`);
+        });
+      }
+
       bodyEl.querySelector('#ca-pad').addEventListener('click', (e) => {
         const b = e.target.closest('[data-k]');
         if (!b) return;
