@@ -11,6 +11,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_DESKTOP_DIR = path.resolve(__dirname, 'desktop');
 
+// Antivirüs ve yerel proxy SSL sertifika zincirleri için esnek TLS toleransı
+if (typeof process.env.NODE_TLS_REJECT_UNAUTHORIZED === 'undefined') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const MIME_TYPES = Object.freeze({
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -666,6 +671,11 @@ async function handleApiProxy(urlObj, req, res) {
           <p>Quantro Edge Web Proxy hedef sunucuya bağlanırken bir sorunla karşılaştı:</p>
           <p><code>${proxyErr.message}</code></p>
           <p style="font-size:13px;color:#8B949E;">Hedef Adres: ${parsed.href}</p>
+          <div style="margin-top:16px;">
+            <a href="${parsed.href}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 18px;background:#38BDF8;color:#0E0F12;text-decoration:none;font-weight:600;border-radius:6px;">
+              Bu Sayfayı Yeni Sekmede Doğrudan Aç ↗
+            </a>
+          </div>
         </div>
       </body>
       </html>

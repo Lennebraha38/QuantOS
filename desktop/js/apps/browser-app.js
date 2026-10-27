@@ -652,9 +652,14 @@ export function mountBrowserApp(container, osContext = {}, args = {}) {
               ${r.isAcademic ? `<span style="padding:1px 6px;border-radius:4px;background:rgba(234,67,53,0.15);color:#EA4335;font-size:10px;font-weight:bold;">ArXiv PDF</span>` : ''}
             </div>
 
-            <a href="${escapeHtml(r.link)}" data-result-link="${escapeHtml(r.link)}" style="font-size:17px;color:#8AB4F8;text-decoration:none;font-weight:600;line-height:1.35;margin-top:2px;">
-              ${escapeHtml(r.title)}
-            </a>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <a href="${escapeHtml(r.link)}" data-result-link="${escapeHtml(r.link)}" style="font-size:17px;color:#8AB4F8;text-decoration:none;font-weight:600;line-height:1.35;margin-top:2px;cursor:pointer;">
+                ${escapeHtml(r.title)}
+              </a>
+              <button type="button" class="btn btn-sm btn-ghost" data-open-external="${escapeHtml(r.link)}" title="Harici Tarayıcıda Yeni Sekmede Aç" style="font-size:11px;padding:1px 6px;color:var(--text-3);">
+                ↗
+              </button>
+            </div>
 
             ${r.authors ? `
               <div style="font-size:11px;color:var(--text-3);margin-top:1px;">
@@ -667,15 +672,18 @@ export function mountBrowserApp(container, osContext = {}, args = {}) {
             </div>
 
             <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-sm btn-ghost" data-open-proxy="${escapeHtml(r.link)}" style="font-size:11px;padding:2px 10px;">
+              <button type="button" class="btn btn-sm btn-primary" data-open-proxy="${escapeHtml(r.link)}" style="font-size:11px;padding:3px 12px;border-radius:6px;">
                 Quantro Edge ile Aç ↗
               </button>
+              <button type="button" class="btn btn-sm btn-ghost" data-open-external="${escapeHtml(r.link)}" style="font-size:11px;padding:3px 10px;border-radius:6px;">
+                Yeni Sekmede Aç 🌐
+              </button>
               ${r.pdfLink ? `
-                <button type="button" class="btn btn-sm btn-primary" data-open-proxy="${escapeHtml(r.pdfLink)}" style="font-size:11px;padding:2px 10px;">
-                  PDF Görüntüle 📄
+                <button type="button" class="btn btn-sm btn-ghost" data-open-external="${escapeHtml(r.pdfLink)}" style="font-size:11px;padding:3px 10px;border-radius:6px;">
+                  PDF İndir 📄
                 </button>
               ` : ''}
-              <button type="button" class="btn btn-sm btn-ghost" data-copy-link="${escapeHtml(r.link)}" style="font-size:11px;padding:2px 8px;">
+              <button type="button" class="btn btn-sm btn-ghost" data-copy-link="${escapeHtml(r.link)}" style="font-size:11px;padding:3px 8px;border-radius:6px;">
                 Bağlantıyı Kopyala 📋
               </button>
             </div>
@@ -718,14 +726,18 @@ export function mountBrowserApp(container, osContext = {}, args = {}) {
         `;
       }
 
-      // Olay Dinleyicileri
-      viewEl.addEventListener('click', (e) => {
+      // Arama Sonuçları Tıklama Yönetimi
+      itemsEl.addEventListener('click', (e) => {
         const a = e.target.closest('[data-result-link]');
         const b = e.target.closest('[data-open-proxy]');
+        const ext = e.target.closest('[data-open-external]');
         const c = e.target.closest('[data-copy-link]');
         const d = e.target.closest('[data-academic-search]');
 
-        if (a) {
+        if (ext) {
+          e.preventDefault();
+          window.open(ext.dataset.openExternal, '_blank', 'noopener,noreferrer');
+        } else if (a) {
           e.preventDefault();
           navigateTo(a.dataset.resultLink);
         } else if (b) {
@@ -1019,16 +1031,69 @@ export function mountBrowserApp(container, osContext = {}, args = {}) {
       viewEl.innerHTML = `<div style="padding:16px;overflow:auto;flex:1;">${BUILTIN_PAGES[t.url].html}</div>`;
     } else {
       statusSecurity.textContent = '🔒 Quantro Güvenli Web Proxy Aktif (SSRF Korumalı)';
-      viewEl.innerHTML = '';
+      const targetUrl = t.url;
+      const proxySrc = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 
-      const proxySrc = `/api/proxy?url=${encodeURIComponent(t.url)}`;
-      const frame = document.createElement('iframe');
-      frame.src = proxySrc;
-      frame.title = 'Quantro Web Tarayıcı Görüntüsü';
-      frame.style.cssText = 'flex:1;width:100%;height:100%;border:none;background:#ffffff;';
-      frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups');
+      viewEl.innerHTML = `
+        <div style="display:flex;flex-direction:column;flex:1;height:100%;background:var(--ink-950);position:relative;overflow:hidden;">
+          <!-- Sayfa Üst Bilgi ve Hızlı Eylem Çubuğu -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--panel-bg);border-bottom:1px solid var(--hair);font-size:12px;gap:12px;z-index:5;">
+            <div style="display:flex;align-items:center;gap:8px;overflow:hidden;flex:1;">
+              <span style="font-size:14px;color:var(--accent);">🔒</span>
+              <span style="font-family:monospace;color:var(--text-1);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                ${escapeHtml(targetUrl)}
+              </span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+              <button type="button" class="btn btn-sm btn-ghost" id="br-frame-back" title="Google Sonuçlarına Dön">◀ Geri</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="br-frame-reload" title="Yeniden Yükle">🔄 Yenile</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="br-frame-copy" title="URL'yi Kopyala">📋 Kopyala</button>
+              <button type="button" class="btn btn-sm btn-primary" id="br-frame-ext" title="Bu sayfayı tarayıcınızda yeni sekmede doğrudan açar">
+                Yeni Sekmede Aç ↗
+              </button>
+            </div>
+          </div>
 
-      viewEl.appendChild(frame);
+          <!-- Canlı Yükleme Göstergesi -->
+          <div id="br-frame-loader" style="height:3px;background:rgba(66,133,244,0.15);overflow:hidden;position:relative;">
+            <div style="width:100%;height:100%;background:linear-gradient(90deg, #4285F4, #34A853);animation:pulse 1.2s infinite ease-in-out;"></div>
+          </div>
+
+          <!-- Web Görüntü Çerçevesi -->
+          <iframe id="br-page-frame" src="${escapeHtml(proxySrc)}" title="Quantro Web Görüntüsü" style="flex:1;width:100%;height:100%;border:none;background:#ffffff;" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+        </div>
+      `;
+
+      const frameEl = viewEl.querySelector('#br-page-frame');
+      const loaderEl = viewEl.querySelector('#br-frame-loader');
+
+      frameEl.onload = () => {
+        if (loaderEl) loaderEl.style.display = 'none';
+      };
+
+      viewEl.querySelector('#br-frame-back')?.addEventListener('click', () => {
+        if (t.histIdx > 0) {
+          t.histIdx--;
+          t.url = t.history[t.histIdx];
+          render();
+        } else {
+          navigateTo('quantro://google');
+        }
+      });
+
+      viewEl.querySelector('#br-frame-reload')?.addEventListener('click', () => {
+        if (loaderEl) loaderEl.style.display = 'block';
+        frameEl.src = proxySrc + '&_nocache=' + Date.now();
+      });
+
+      viewEl.querySelector('#br-frame-copy')?.addEventListener('click', () => {
+        navigator.clipboard?.writeText(targetUrl);
+        osContext.notify?.('URL Kopyalandı', targetUrl);
+      });
+
+      viewEl.querySelector('#br-frame-ext')?.addEventListener('click', () => {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      });
     }
   }
 
