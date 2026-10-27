@@ -1110,6 +1110,69 @@ export class JarvisBrain {
       };
     }
 
+    // 17.5) Aktif pencereyi sola / sağa yasla (Snap Active)
+    if (
+      ascii.includes('sola yasla') ||
+      ascii.includes('sola kenetle') ||
+      ascii.includes('snap left')
+    ) {
+      if (this.ctx.wm && typeof this.ctx.wm.snapActive === 'function') {
+        this.ctx.wm.snapActive('left');
+      }
+      return {
+        intent: 'wm.snap_left',
+        reply: 'Aktif pencere ekranın sol tarafına kenetlendi efendim.',
+        action: 'wm:snap_left'
+      };
+    }
+
+    if (
+      ascii.includes('saga yasla') ||
+      ascii.includes('saga kenetle') ||
+      ascii.includes('snap right')
+    ) {
+      if (this.ctx.wm && typeof this.ctx.wm.snapActive === 'function') {
+        this.ctx.wm.snapActive('right');
+      }
+      return {
+        intent: 'wm.snap_right',
+        reply: 'Aktif pencere ekranın sağ tarafına kenetlendi efendim.',
+        action: 'wm:snap_right'
+      };
+    }
+
+    if (
+      ascii.includes('benchmark calistir') ||
+      ascii.includes('performans testi') ||
+      ascii.includes('sistem hizini olc') ||
+      ascii.includes('quantmark')
+    ) {
+      if (typeof this.ctx.openApp === 'function') {
+        this.ctx.openApp('taskmgr', { tab: 'bench' });
+      }
+      return {
+        intent: 'system.benchmark',
+        reply: 'QuantMark süper bilgisayar kuantum ve astrofizik performans laboratuvarı başlatılıyor efendim.',
+        action: 'system:benchmark'
+      };
+    }
+
+    if (
+      ascii.includes('ekran goruntusu al') ||
+      ascii.includes('ekran alintisi') ||
+      ascii.includes('screenshot') ||
+      ascii.includes('ss al')
+    ) {
+      if (typeof this.ctx.takeScreenshot === 'function') {
+        this.ctx.takeScreenshot();
+      }
+      return {
+        intent: 'system.screenshot',
+        reply: 'Masaüstü ekran görüntüsü alındı ve VFS Resimler klasörüne kaydedildi efendim.',
+        action: 'system:screenshot'
+      };
+    }
+
     // 18) Pencereleri yan yana / ızgara diz
     if (
       ascii.includes('yan yana diz') ||

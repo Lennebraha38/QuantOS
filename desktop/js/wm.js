@@ -412,6 +412,33 @@ export class WindowManager {
     this._notify();
   }
 
+
+  snapActive(dir) {
+    let win = null;
+    if (this.focusedId && this.windows.has(this.focusedId)) {
+      win = this.windows.get(this.focusedId);
+    }
+    if (!win || win.minimized) {
+      const open = this.getDesktopWindows().filter((w) => !w.minimized);
+      if (open.length > 0) {
+        win = open[open.length - 1];
+        this.focusWindow(win.id);
+      }
+    }
+    if (!win) return;
+
+    if (dir === 'left') {
+      this.snapWindowToNormalizedRect(win.id, [0, 0, 0.5, 1]);
+    } else if (dir === 'right') {
+      this.snapWindowToNormalizedRect(win.id, [0.5, 0, 0.5, 1]);
+    } else if (dir === 'up') {
+      if (!win.maximized) this.toggleMaximize(win.id);
+    } else if (dir === 'down') {
+      if (win.maximized) this.toggleMaximize(win.id);
+      else this.minimizeWindow(win.id);
+    }
+  }
+
   snapWindows(mode = 'split-2') {
     const visible = this.getDesktopWindows().filter((w) => !w.minimized);
     if (!visible.length) return;

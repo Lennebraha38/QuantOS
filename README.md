@@ -13,7 +13,7 @@
 
 ### 1. Tam Windows 11 Masaüstü Deneyimi (DWM & Kabuk)
 - **Önyükleme -> Kilit Ekranı -> Oturum Açma Akışı**: UEFI/Limine önyükleme ekranı, canlı astronomik/kuantum durum özetli Windows 11 Kilit Ekranı ve araştırmacı giriş ekranı.
-- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, ekran kenarına sürükleyerek kenetleme, **Windows 11 Alt+Tab 3D/Akrilik Görev Değiştirici**, **Windows 11 Çalıştır (Run - Alt+R / Win+R)**, evrensel sistem kısayolları (**Alt+D Masaüstü, Alt+E Gezgin, Alt+I Ayarlar, Alt+L Kilitle**), **çift tıklama debounce koruması** ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
+- **Gelişmiş Pencere Yöneticisi (DWM)**: Sürükle-bırak, 8 yönlü yeniden boyutlandırma, küçültme/büyütme, Z-index odak yönetimi, **Windows 11 Klavye Kenetleme (Snap Active: Alt+Sol / Alt+Sağ / Alt+Yukarı / Alt+Aşağı)**, **Masaüstü Ekran Alıntısı (Alt+S Snipping)**, **Windows 11 Alt+Tab 3D/Akrilik Görev Değiştirici**, **Windows 11 Çalıştır (Run - Alt+R / Win+R)**, evrensel sistem kısayolları (**Alt+D Masaüstü, Alt+E Gezgin, Alt+I Ayarlar, Alt+L Kilitle**), **çift tıklama debounce koruması** ve **6 düzenlik Windows 11 Snap Layouts** menüsü.
 - **Küresel Arama (Ctrl+K) & Satır İçi Bilimsel Hesaplama**: Başlat ve arama paletinde anlık matematik/fizik formül değerlendirmesi (örn. `2^10`, `sqrt(144)`, `2*pi*6371`, `G*M_sun/c^2`), VFS dosya arama ve doğrudan Google arama yönlendirmesi.
 - **Sanal Masaüstleri & Görev Görünümü (Task View)**: Çoklu çalışma alanları (*Komuta*, *Kuantum AR-GE*, *Astrofizik Gözlemevi*) arasında anında geçiş.
 - **Ortalanmış Görev Çubuğu & Başlat Menüsü**: Anlık küresel arama (`Ctrl+K`), sabitlenmiş uygulamalar, son AR-GE dosyaları, güç menüsü (Kilitle, Uyku, Yeniden Başlat, Kapat).
@@ -49,7 +49,7 @@
 | **Dosya Gezgini** | `explorer` | Kalıcı sanal dosya sistemi (`C:\QuantOS`, `C:\Users\Quantro\...`), **cihazdan dosya içe aktarma (upload) / dışa indirme (download)**, sekme/klasör/arama/kopyala/taşı |
 | **QuantShell Terminal** | `terminal` | Çok sekmeli gerçek Linux Bash kabuğu (140+ Bash/Linux komutu, canlı `cd` dizin takibi, sunucu uç noktası `/api/terminal/exec`) + dahili `qsim`, `bb84`, `qrng`, `blackhole`, `cosmo`, `jarvis` bilimsel motorları |
 | **QuantCode Studio** | `code` | VFS entegreli çok sekmeli kod düzenleyici, JS çalıştırıcı, QASM aktarıcı ve Markdown önizleme |
-| **Görev Yöneticisi** | `taskmgr` | Canlı süreç yönetimi + gerçek zamanlı FPS, Bellek, Host Linux Çekirdek Yükü ve QPU durum vektörü grafikleri |
+| **Görev Yöneticisi** | `taskmgr` | Canlı süreç yönetimi + FPS/Bellek/Çekirdek grafikleri + **QuantMark Süper Bilgisayar Benchmark Laboratuvarı (QPU, Kerr, N-Cisim, Entropi)** |
 | **Ayarlar** | `settings` | Sistem, Kişiselleştirme (4 tema + duvar kağıtları), Ses/TTS (ElevenLabs/OS), Ağ/QRNG, Güvenlik, J.A.R.V.I.S. AI ve Hakkında |
 | **Quantro Edge Tarayıcı** | `browser` | Gerçek web tarayıcısı: Google Custom Search API, Serper API ve DuckDuckGo motorlu gerçek web araması, SSRF korumalı canlı web proxy'si, Omnibox, Google ana sayfası ve `⚙️ API` ayarları |
 | **Bilimsel Hesap Makinesi** | `calculator` | Standart/Bilimsel mod, CODATA 2022 fizik sabitleri ($c, h, \hbar, G, k_B, M_\odot$) ve birim dönüştürücü |

@@ -1,10 +1,15 @@
+import { QuantumPresets } from '../engines/quantum-engine.js';
+import { blackHoleMetrics, NBodySystem } from '../engines/astro-engine.js';
+import { generateQRNGBytes, computeByteStats } from '../engines/bb84-engine.js';
 /**
  * Uygulama 8: Windows 11 Görev Yöneticisi (Task Manager)
  * Açık süreç tablosu, Görevi Sonlandır ve gerçek zamanlı FPS / Host Çekirdek / VFS Canvas grafikleri
  */
 
-export function mountTaskMgrApp(container, osContext) {
-  let activeTab = 'processes';
+export function mountTaskMgrApp(container, osContext, args = {}) {
+  let activeTab = args?.tab === 'bench' ? 'bench' : 'processes';
+  let benchResult = null;
+  let benchRunning = false;
   const fpsHist = Array(40).fill(60);
   const memHist = Array(40).fill(35);
   let timerId = 0;
@@ -14,6 +19,7 @@ export function mountTaskMgrApp(container, osContext) {
       <div class="app-tabs" id="tmgr-tabs">
         <button type="button" class="app-tab active" data-tab="processes">Süreçler (DWM Pencereleri)</button>
         <button type="button" class="app-tab" data-tab="perf">Performans &amp; Host Telemetrisi</button>
+        <button type="button" class="app-tab ${activeTab === 'bench' ? 'active' : ''}" data-tab="bench">QuantMark Benchmark</button>
       </div>
       <div class="app-main" id="tmgr-body"></div>
       <div class="app-statusbar">
@@ -128,6 +134,128 @@ export function mountTaskMgrApp(container, osContext) {
           render();
         })
       );
+    } else if (activeTab === 'bench') {
+      bodyEl.innerHTML = `
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">QUANTMARK — SÜPER BİLGİSAYAR &amp; KUANTUM HESAPLAMA LABORATUVARI</span>
+              <p style="margin:4px 0 0;font-size:12px;color:var(--text-2);">
+                Çok boyutlu Hilbert uzayı kuantum durum vektörü rotasyonları, Boyer-Lindquist Kerr tensörleri, Velocity-Verlet N-cisim integrasyonu ve Shannon entropi debisini gerçek zamanlı ölçer.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary" id="tmgr-run-bench" ${benchRunning ? 'disabled' : ''}>
+              ${benchRunning ? '⏳ Test Yürütülüyor...' : '🚀 QuantMark Benchmark Testini Başlat'}
+            </button>
+          </div>
+
+          <div id="tmgr-bench-out" style="margin-top:14px;">
+            ${benchResult ? `
+              <div style="background:var(--accent-subtle);border:1px solid var(--accent);border-radius:var(--radius-m);padding:16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;">TOPLAM QUANTMARK BİLEŞİK SKORU</div>
+                  <div style="font-size:28px;font-weight:700;font-family:var(--font-mono);color:var(--text-1);">${benchResult.score.toLocaleString('tr-TR')} <span style="font-size:14px;color:var(--accent);">Q-MARKS</span></div>
+                  <div style="font-size:12px;color:var(--patina);font-weight:500;">SEVİYE: ${benchResult.level}</div>
+                </div>
+                <button type="button" class="btn btn-sm" id="tmgr-copy-bench">📋 Sonuç Raporunu Kopyala</button>
+              </div>
+
+              <div class="metrics-grid">
+                <div class="metric-box">
+                  <span class="metric-label">⚛️ QPU HİLBERT DÖNÜŞÜMÜ</span>
+                  <span class="metric-value">${benchResult.dtQuantum.toFixed(1)} <span class="metric-unit">ms</span></span>
+                  <span style="font-size:11px;color:var(--text-3);">500x GHZ(4) + Unitary Rotasyonlar</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">🕳️ KERR &amp; SCHWARZSCHILD</span>
+                  <span class="metric-value">${benchResult.dtAstro.toFixed(1)} <span class="metric-unit">ms</span></span>
+                  <span style="font-size:11px;color:var(--text-3);">10.000x Relativistik Olay Ufku</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">🪐 N-CİSİM YÖRÜNGE HIZI</span>
+                  <span class="metric-value">${benchResult.dtNbody.toFixed(1)} <span class="metric-unit">ms</span></span>
+                  <span style="font-size:11px;color:var(--text-3);">2.000 Adım Velocity-Verlet</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">🔐 SHANNON ENTROPİ HIZI</span>
+                  <span class="metric-value">${benchResult.entropy.toFixed(2)} <span class="metric-unit">bit/B</span></span>
+                  <span style="font-size:11px;color:var(--text-3);">32 KB CSPRNG Kripto Analizi</span>
+                </div>
+              </div>
+            ` : `
+              <div style="text-align:center;padding:36px;color:var(--text-3);">
+                <div style="font-size:32px;margin-bottom:8px;">⚛️</div>
+                <div style="font-size:14px;font-weight:500;color:var(--text-2);">Test Henüz Çalıştırılmadı</div>
+                <div style="font-size:12px;margin-top:4px;">Yukarıdaki başlat düğmesine basarak sisteminizin bilimsel hesaplama kapasitesini ölçebilirsiniz.</div>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+
+      const runBtn = bodyEl.querySelector('#tmgr-run-bench');
+      if (runBtn) {
+        runBtn.addEventListener('click', () => {
+          benchRunning = true;
+          render();
+          setTimeout(() => {
+            // 1. Quantum Bench
+            const t0 = performance.now();
+            for (let i = 0; i < 500; i++) {
+              const qc = QuantumPresets.ghz(4);
+              qc.run();
+            }
+            const dtQuantum = performance.now() - t0;
+
+            // 2. Astro Bench
+            const t1 = performance.now();
+            for (let i = 0; i < 10000; i++) {
+              blackHoleMetrics(10 + (i % 50), 0.5);
+            }
+            const dtAstro = performance.now() - t1;
+
+            // 3. N-Body Bench
+            const t2 = performance.now();
+            const nb = new NBodySystem([{ mass: 100, x: 0, y: 0 }, { mass: 1, x: 100, y: 0, vy: 1 }]);
+            for (let i = 0; i < 2000; i++) nb.step(0.01);
+            const dtNbody = performance.now() - t2;
+
+            // 4. Crypto Bench
+            const t3 = performance.now();
+            const bytes = generateQRNGBytes(32768);
+            const stats = computeByteStats(bytes);
+            const dtCrypto = performance.now() - t3;
+
+            const totalDt = dtQuantum + dtAstro + dtNbody + dtCrypto;
+            const score = Math.round(1500000 / (totalDt + 15));
+            let level = 'SÜPER BİLGİSAYAR / ARAŞTIRMA İSTASYONU';
+            if (score < 8000) level = 'GİRİŞ SEVİYESİ MOBİL İŞLEM';
+            else if (score < 14000) level = 'GELİŞMİŞ İŞ İSTASYONU';
+
+            benchResult = { dtQuantum, dtAstro, dtNbody, dtCrypto, totalDt, score, level, entropy: stats.shannonEntropy };
+            benchRunning = false;
+            render();
+            osContext.notify?.('QuantMark Benchmark', `Test tamamlandı! Skor: ${score.toLocaleString('tr-TR')} Q-Marks`);
+          }, 30);
+        });
+      }
+
+      const copyBtn = bodyEl.querySelector('#tmgr-copy-bench');
+      if (copyBtn && benchResult) {
+        copyBtn.addEventListener('click', () => {
+          const report = `--- QUANTMARK BİLİMSEL BENCHMARK RAPORU ---
+Skor: ${benchResult.score.toLocaleString('tr-TR')} Q-Marks (${benchResult.level})
+- QPU Durum Vektörü: ${benchResult.dtQuantum.toFixed(2)} ms
+- Kerr Kara Delik Tensörleri: ${benchResult.dtAstro.toFixed(2)} ms
+- N-Cisim Yörünge Simülasyonu: ${benchResult.dtNbody.toFixed(2)} ms
+- Shannon Entropi Oranı: ${benchResult.entropy.toFixed(3)} bit/B
+Tarih: ${new Date().toLocaleString('tr-TR')}
+Platform: QuantOS 24H2`;
+          if (osContext.copyToClipboard) osContext.copyToClipboard(report);
+          else navigator.clipboard?.writeText?.(report).catch(() => {});
+          osContext.notify?.('QuantMark', 'Benchmark raporu panoya kopyalandı.');
+        });
+      }
     } else {
       const usage = osContext.vfs.getStorageUsage();
       bodyEl.innerHTML = `
@@ -165,6 +293,12 @@ export function mountTaskMgrApp(container, osContext) {
   timerId = setInterval(render, 2000);
 
   return {
+    onArgs(next) {
+      if (next?.tab) {
+        activeTab = next.tab;
+        render();
+      }
+    },
     destroy() {
       clearInterval(timerId);
     },

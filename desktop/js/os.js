@@ -167,6 +167,82 @@ async function bootstrapQuantOS() {
     snapWindows(mode = 'split-2') {
       wm.snapWindows(mode);
     },
+    snapActive(dir) {
+      wm.snapActive(dir);
+    },
+    takeScreenshot() {
+      const w = window.innerWidth || 1280;
+      const h = window.innerHeight || 720;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      // Arka plan
+      ctx.fillStyle = '#0E0F12';
+      ctx.fillRect(0, 0, w, h);
+
+      // Izgara
+      ctx.strokeStyle = 'rgba(234, 231, 225, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 48) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 48) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Açık pencereleri tuvale çiz
+      const wins = wm.getDesktopWindows().filter((win) => !win.minimized);
+      wins.forEach((win) => {
+        const r = win.rect;
+        ctx.fillStyle = '#16191E';
+        ctx.strokeStyle = '#D1925C';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
+
+        // Pencere başlığı
+        ctx.fillStyle = '#1C1F26';
+        ctx.fillRect(r.x, r.y, r.w, 36);
+        ctx.fillStyle = '#EAE7E1';
+        ctx.font = '13px "IBM Plex Sans", sans-serif';
+        ctx.fillText(win.title, r.x + 12, r.y + 23);
+      });
+
+      // Görev çubuğu
+      ctx.fillStyle = 'rgba(19, 21, 25, 0.95)';
+      ctx.fillRect(0, h - 48, w, 48);
+      ctx.fillStyle = '#D1925C';
+      ctx.font = '12px "IBM Plex Mono", monospace';
+      ctx.fillText(`QuantOS 24H2 · ${new Date().toLocaleTimeString('tr-TR')} · Kayseri LMST`, w / 2 - 120, h - 18);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const filename = `Ekran-Alintisi-${Date.now().toString().slice(-4)}.png`;
+      const vfsPath = `C:/Users/Quantro/Pictures/${filename}`;
+
+      if (!vfs.exists('C:/Users/Quantro/Pictures')) {
+        vfs.mkdir('C:/Users/Quantro/Pictures');
+      }
+      vfs.write(vfsPath, dataUrl);
+
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      sound.playNotification();
+      notify('Ekran Alıntısı', `Ekran görüntüsü kaydedildi ve indirildi: ${filename}`);
+      return vfsPath;
+    },
     setTheme(themeId) {
       const valid = ['ink-copper', 'jarvis-holo', 'win11-mica', 'vellum-light'];
       const next = valid.includes(themeId) ? themeId : 'ink-copper';
